@@ -43,6 +43,8 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener {
 
+
+    //Coments changed
     private static final String TAG = "LOG_TAG";
 
     private static final String NAME = "Very long name for forlder";
