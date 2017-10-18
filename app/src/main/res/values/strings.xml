@@ -477,4 +477,8 @@
     <string name="ic_whatshot">&#xe1ae;</string>
     <string name="ic_wifi_tethering">&#xe1af;</string>
     <string name="ic_work">&#xe1b0;</string>
+
+
+    <!-- FontAwesome icons -->
+    <string name="fa_icon_star">&#xf005;</string>
 </resources>

@@ -7,6 +7,9 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
@@ -22,6 +25,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.t0p47.library.model.TreeNode;
 import com.t0p47.library.view.AndroidTreeView;
 import com.t0p47.mendeley.R;
+import com.t0p47.mendeley.adapter.JournalArticleAdapter;
 import com.t0p47.mendeley.app.AppConfig;
 import com.t0p47.mendeley.app.AppController;
 import com.t0p47.mendeley.db.DatabaseHandler;
@@ -41,7 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener {
+public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener, TreeNode.TreeNodeLongClickListener {
 
 
     //Coments changed(Now from laptop)
@@ -56,6 +60,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private Toolbar toolbar;
     private FloatingActionButton fab;
     private ProgressDialog pDialog;
+    private RecyclerView recyclerView;
+    private JournalArticleAdapter mAdapter;
 
     HashMap<Integer, TreeNode> foldersTreeIds;
     List<Folder> foldersList;
@@ -86,10 +92,11 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         dbh.recreateAllTables();
 
         foldersList = dbh.getAllFolders();
-
+        articlesList = dbh.getRootFolderArticles();
 
 
         getFolders();
+        getArticles();
 
 
         mHandler = new Handler();
@@ -97,6 +104,16 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         navigationView = (NavigationView) findViewById(R.id.nav_view);
         fab = (FloatingActionButton) findViewById(R.id.fab);
+        recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+
+        mAdapter = new JournalArticleAdapter(articlesList);
+        RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
+        recyclerView.setLayoutManager(mLayoutManager);
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
+        recyclerView.setAdapter(mAdapter);
+
+
+
 
         //Navigation view header
         navHeader = navigationView.getHeaderView(0);
@@ -117,6 +134,22 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             loadFolder();
         }
 
+    }
+
+    private void showArticlesInRootFolder(){
+
+        Log.d(TAG,"MainActivity: notify adapter. Articles count "+articlesList.size());
+        mAdapter.notifyDataSetChanged();
+
+    }
+
+    private void getArticles(){
+        if(dbh.getArticlesCount()==0){
+            getFirstTimeArticles();
+            //TODO: Elseif если в настройках стоит галочка синхронизировать при запуске
+        }else{
+            //loadArticles();
+        }
     }
 
     private void getFolders(){
@@ -186,6 +219,118 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         };
 
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    private void getFirstTimeArticles(){
+        String tag_string_req = "req_get_articles";
+
+        pDialog.setMessage("Synching articles...");
+        showDialog();
+
+        StringRequest strReq = new StringRequest(Request.Method.GET, AppConfig.URL_SYNC_ARTICLES, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "MainActivity: response " + response);
+                //response [{"id":109,"title":"ForTask2","authors":"Alex","abstract":null,"journal_id":"01","volume":null,
+                // "issue":null,"year":null,"pages":null,"ArXivID":null,"DOI":null,"PMID":null,"folder":2,
+                // "filepath":null,"1":0,"uid":19,"created_at":"2017-09-28 06:57:34",
+                // "updated_at":"2017-09-28 06:57:34","delete_date":"0000-00-00 00:00:00","favorite":1},{"id":111,"tit
+
+                try{
+                    JSONArray jArr = new JSONArray(response);
+                    articlesList = new ArrayList<>();
+                    if(jArr.length()!=0){
+                        for(int i = 0;i<jArr.length();i++){
+                            JSONObject jObj = jArr.getJSONObject(i);
+                            int global_id = jObj.getInt("id");
+                            String title = jObj.getString("title");
+                            String authors = jObj.getString("authors");
+                            String abstractText = jObj.getString("abstract");
+                            String journal = jObj.getString("journal_id");
+                            int volume = 0;
+                            if(!jObj.get("volume").equals(null)){
+                                volume = jObj.getInt("volume");
+                            }
+                            int issue = 0;
+                            if (!jObj.get("issue").equals(null)){
+                                issue = jObj.getInt("issue");
+                            }
+
+                            int year = 0;
+                            if(!jObj.get("year").equals(null)){
+                                year = jObj.getInt("year");
+                            }
+
+                            int pages = 0;
+                            if(!jObj.get("pages").equals(null)){
+                                pages = jObj.getInt("pages");
+                            }
+
+                            int ArXivID = 0;
+                            if(!jObj.get("ArXivID").equals(null)){
+                                ArXivID = jObj.getInt("ArXivID");
+                            }
+
+                            int DOI = 0;
+                            if(!jObj.get("DOI").equals(null)){
+                                DOI = jObj.getInt("DOI");
+                            }
+
+                            int PMID = 0;
+                            if(!jObj.get("PMID").equals(null)){
+                                PMID = jObj.getInt("PMID");
+                            }
+
+                            int folder = 0;
+                            if(!jObj.get("folder").equals(null)){
+                                folder = jObj.getInt("folder");
+                            }
+
+                            String filepath = jObj.getString("filepath");
+                            String created_at = jObj.getString("created_at");
+
+                            int favorite = 0;
+                            if(!jObj.get("favorite").equals(null)){
+                                favorite = jObj.getInt("favorite");
+                            }
+
+                            JournalArticle article = new JournalArticle(global_id, title, authors, abstractText,journal,volume,issue,year,pages,ArXivID,DOI,PMID,folder,filepath,created_at,favorite);
+                            articlesList.add(article);
+                        }
+                        dbh.recreateAllArticles(articlesList);
+                        articlesList = dbh.getRootFolderArticles();
+                        Log.d(TAG,"MainActivity get articles after response: "+dbh.getRootFolderArticles().size());
+                        showArticlesInRootFolder();
+                    }else{
+                        Log.d(TAG,"MainActivity: no articles on server");
+                    }
+                }catch(JSONException e){
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: "+e.getMessage(), Toast.LENGTH_LONG).show();
+                    Log.d(TAG,"MainActivity: getFirstTimeArticles json error: "+e.getMessage());
+                }
+
+                hideDialog();
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "MainActivity: getFirstTimeArticle error "+error.getMessage());
+                Toast.makeText(getApplicationContext(),"Article sync error "+error.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        }){
+
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<>();
+                String token = "Bearer "+session.getAuthToken();
+                headers.put("Authorization",token);
+                return headers;
+            }
+
+        };
+
+        AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
     }
 
     private void refreshToken(){
@@ -260,6 +405,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         //TODO: Custom
         treeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
         treeView.setDefaultNodeClickListener(this);
+        treeView.setDefaultNodeLongClickListener(this);
         treeView.setDefaultViewHolder(ArrowExpandSelectableHeaderHolder.class);
         containerView.addView(treeView.getView());
         treeView.setUseAutoToggle(false);
@@ -280,6 +426,12 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     public void onClick(TreeNode node, Object value) {
         Toast.makeText(this, "Click folder", Toast.LENGTH_SHORT).show();
         Log.d(TAG, "MainActivity: treeNode "+node+", value: "+((IconTreeItemHolder.IconTreeItem)value).local_folder_id);
+    }
+
+    @Override
+    public boolean onLongClick(TreeNode node, Object value){
+        Toast.makeText(this, "Long click folder", Toast.LENGTH_SHORT).show();
+        return false;
     }
 
     @Override

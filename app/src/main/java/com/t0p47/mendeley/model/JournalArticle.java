@@ -11,7 +11,7 @@ public class JournalArticle {
     String title;
     String authors;
     String abstractField;
-    int journal_id;
+    String journal;
     int volume;
     int issue;
     int year;
@@ -20,17 +20,19 @@ public class JournalArticle {
     int DOI;
     int PMID;
     int folder;
-    int filepath;
+    String filepath;
+    String created_at;
+    int favorite;
 
     public JournalArticle() {}
 
-    public JournalArticle(int local_id, int global_id, String title, String authors, String abstractField, int journal_id, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, int filepath) {
+    public JournalArticle(int local_id, int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, int favorite) {
         this.local_id = local_id;
         this.global_id = global_id;
         this.title = title;
         this.authors = authors;
         this.abstractField = abstractField;
-        this.journal_id = journal_id;
+        this.journal = journal;
         this.volume = volume;
         this.issue = issue;
         this.year = year;
@@ -40,6 +42,44 @@ public class JournalArticle {
         this.PMID = PMID;
         this.folder = folder;
         this.filepath = filepath;
+        this.created_at = created_at;
+        this.favorite = favorite;
+    }
+
+
+    public JournalArticle(int local_id, String title, String authors, String journal, String created_at, int favorite, String filepath) {
+        this.local_id = local_id;
+        this.title = title;
+        this.authors = authors;
+        this.journal = journal;
+        this.filepath = filepath;
+        this.created_at = created_at;
+        this.favorite = favorite;
+    }
+
+    //response [{"id":109,"title":"ForTask2","authors":"Alex","abstract":null,"journal_id":"01","volume":null,
+    // "issue":null,"year":null,"pages":null,"ArXivID":null,"DOI":null,"PMID":null,"folder":2,
+    // "filepath":null,"1":0,"uid":19,"created_at":"2017-09-28 06:57:34",
+    // "updated_at":"2017-09-28 06:57:34","delete_date":"0000-00-00 00:00:00","favorite":1}
+
+
+    public JournalArticle(int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, int favorite) {
+        this.global_id = global_id;
+        this.title = title;
+        this.authors = authors;
+        this.abstractField = abstractField;
+        this.journal = journal;
+        this.volume = volume;
+        this.issue = issue;
+        this.year = year;
+        this.pages = pages;
+        ArXivID = arXivID;
+        this.DOI = DOI;
+        this.PMID = PMID;
+        this.folder = folder;
+        this.filepath = filepath;
+        this.created_at = created_at;
+        this.favorite = favorite;
     }
 
     public int getLocal_id() {
@@ -82,12 +122,12 @@ public class JournalArticle {
         this.abstractField = abstractField;
     }
 
-    public int getJournal_id() {
-        return journal_id;
+    public String getJournal() {
+        return journal;
     }
 
-    public void setJournal_id(int journal_id) {
-        this.journal_id = journal_id;
+    public void setJournal(String journal) {
+        this.journal = journal;
     }
 
     public int getVolume() {
@@ -154,11 +194,27 @@ public class JournalArticle {
         this.folder = folder;
     }
 
-    public int getFilepath() {
+    public String getFilepath() {
         return filepath;
     }
 
-    public void setFilepath(int filepath) {
+    public void setFilepath(String filepath) {
         this.filepath = filepath;
+    }
+
+    public String getCreated_at() {
+        return created_at;
+    }
+
+    public void setCreated_at(String created_at) {
+        this.created_at = created_at;
+    }
+
+    public int getFavorite() {
+        return favorite;
+    }
+
+    public void setFavorite(int favorite) {
+        this.favorite = favorite;
     }
 }

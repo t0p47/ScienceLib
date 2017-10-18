@@ -57,11 +57,11 @@ public class LoginActivity extends AppCompatActivity {
         session = new SessionManager(getApplicationContext());
 
         //Check if user already logged in or not
-        /*if(session.isLoggedIn()){
+        if(session.isLoggedIn()){
             Intent intent = new Intent(LoginActivity.this,MainActivity.class);
             startActivity(intent);
             finish();
-        }*/
+        }
 
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override

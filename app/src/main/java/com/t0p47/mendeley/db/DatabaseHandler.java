@@ -5,8 +5,10 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import com.t0p47.mendeley.model.Folder;
+import com.t0p47.mendeley.model.JournalArticle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +55,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     private static final String KEY_ARTICLE_PMID = "PMID";
     private static final String KEY_ARTICLE_FOLDER = "folder";
     private static final String KEY_ARTICLE_FILEPATH = "filepath";
+    private static final String KEY_ARTICLE_CREATED_AT = "created_at";
+    private static final String KEY_ARTICLE_FAVORITE = "favorite";
 
 
     public DatabaseHandler(Context context){
@@ -70,6 +74,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 +KEY_ARTICLE_ISSUE+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_YEAR+" INTEGER DEFAULT NULL,"
                 +KEY_ARTICLE_PAGES+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_ARXIVID+" INTEGER DEFAULT NULL,"
                 +KEY_ARTICLE_DOI+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_PMID+" INTEGER DEFAULT NULL,"
+                +KEY_ARTICLE_CREATED_AT+" TEXT,"+KEY_ARTICLE_FAVORITE+" INTEGER DEFAULT 0,"
                 +KEY_ARTICLE_FOLDER+" INTEGER DEFAULT 0,"+KEY_ARTICLE_FILEPATH+" TEXT DEFAULT NULL"+")";
         db.execSQL(CREATE_ARTICLES_TABLE);
 
@@ -96,6 +101,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
         db.close();
     }
+
+
 
     public List<Folder> getAllFolders(){
         List<Folder> folders = new ArrayList<>();
@@ -147,6 +154,44 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         }
     }
 
+    public void recreateAllArticles(List<JournalArticle> articlesList){
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values;
+
+        for(JournalArticle article : articlesList){
+            values = new ContentValues();
+
+            if(article.getFolder()!= 0){
+                String SELECT_Query = "SELECT "+KEY_LOCAL_ID+" FROM "+TABLE_FOLDERS+" WHERE "+KEY_GLOBAL_ID+"="+article.getFolder();
+                Cursor cursor = db.rawQuery(SELECT_Query,null);
+                if(cursor.moveToFirst()){
+                    article.setFolder(cursor.getInt(0));
+                }
+                cursor.close();
+            }
+            values.put(KEY_ARTICLE_MID, article.getGlobal_id());
+            values.put(KEY_ARTICLE_TITLE, article.getTitle());
+            values.put(KEY_ARTICLE_AUTHORS, article.getAuthors());
+            values.put(KEY_ARTICLE_ABSTRACT, article.getAbstractField());
+            values.put(KEY_ARTICLE_JOURNAL_ID, article.getJournal());
+            values.put(KEY_ARTICLE_VOLUME, article.getVolume());
+            values.put(KEY_ARTICLE_ISSUE, article.getIssue());
+            values.put(KEY_ARTICLE_YEAR, article.getYear());
+            values.put(KEY_ARTICLE_PAGES, article.getPages());
+            values.put(KEY_ARTICLE_ARXIVID, article.getArXivID());
+            values.put(KEY_ARTICLE_DOI, article.getDOI());
+            values.put(KEY_ARTICLE_PMID, article.getPMID());
+            values.put(KEY_ARTICLE_CREATED_AT, article.getCreated_at());
+            values.put(KEY_ARTICLE_FAVORITE,article.getFavorite());
+            values.put(KEY_ARTICLE_FOLDER, article.getFolder());
+            values.put(KEY_ARTICLE_FILEPATH, article.getFilepath());
+
+            db.insert(TABLE_ARTICLES,null,values);
+            Log.d(TAG,"DatabaseHandler: article inserted. Title: "+article.getTitle());
+        }
+    }
+
     public void testAddFolders(){
 
         SQLiteDatabase db = this.getWritableDatabase();
@@ -154,5 +199,77 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(KEY_FOLDER_TITLE,"FirstFolder");
         db.insert(TABLE_FOLDERS,null,values);
+    }
+
+    public List<JournalArticle> getRootFolderArticles(){
+
+        List<JournalArticle> articlesList = new ArrayList<>();
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String SELECT_Query = "SELECT "+KEY_LOCAL_ID+","+KEY_ARTICLE_TITLE+","+KEY_ARTICLE_AUTHORS+","+KEY_ARTICLE_JOURNAL_ID
+                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+" FROM "+TABLE_ARTICLES+" WHERE "+KEY_ARTICLE_FOLDER+"="+0;
+
+        Cursor cursor = db.rawQuery(SELECT_Query,null);
+        if(cursor.moveToFirst()){
+            do{
+                int local_id = cursor.getInt(0);
+                String title = cursor.getString(1);
+                String author = cursor.getString(2);
+                String journal = cursor.getString(3);
+                String created_at = cursor.getString(4);
+                int favorite = cursor.getInt(5);
+                String filepath = cursor.getString(6);
+
+                JournalArticle article = new JournalArticle(local_id,title,author,journal,created_at,favorite,filepath);
+                articlesList.add(article);
+            }while (cursor.moveToNext());
+        }
+
+        return articlesList;
+    }
+
+    public List<JournalArticle> getArticlesInFolder(int folder_local_id){
+
+        List<JournalArticle> articlesList = new ArrayList<>();
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String SELECT_Query = "SELECT "+KEY_LOCAL_ID+","+KEY_ARTICLE_TITLE+","+KEY_ARTICLE_AUTHORS+","+KEY_ARTICLE_JOURNAL_ID
+                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+" FROM "+TABLE_ARTICLES+" WHERE "+KEY_ARTICLE_FOLDER+"="+folder_local_id;
+
+        Cursor cursor = db.rawQuery(SELECT_Query,null);
+        if(cursor.moveToFirst()){
+            do{
+                int local_id = cursor.getInt(0);
+                String title = cursor.getString(1);
+                String author = cursor.getString(2);
+                String journal = cursor.getString(3);
+                String created_at = cursor.getString(4);
+                int favorite = cursor.getInt(5);
+                String filepath = cursor.getString(6);
+
+                JournalArticle article = new JournalArticle(local_id,title,author,journal,created_at,favorite,filepath);
+                articlesList.add(article);
+            }while (cursor.moveToNext());
+        }
+        cursor.close();
+
+        return articlesList;
+
+    }
+
+    public int getArticlesCount(){
+        int articlesCount = 0;
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String SELECT_Query = "SELECT "+KEY_LOCAL_ID +" FROM "+TABLE_ARTICLES;
+
+        Cursor cursor = db.rawQuery(SELECT_Query,null);
+
+        articlesCount = cursor.getCount();
+
+        return articlesCount;
     }
 }

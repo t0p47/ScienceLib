@@ -8,6 +8,8 @@ public class AppConfig {
 
     public static String URL_SYNC_FOLDERS = "http://45.76.186.7/api/android/sync/folders";
 
+    public static String URL_SYNC_ARTICLES = "http://45.76.186.7/api/android/sync/articles";
+
     public static String URL_LOGIN_USER = "http://45.76.186.7/api/authenticate";
 
     public static String URL_REGISTER_USER = "http://45.76.186.7/api/register";
