@@ -29,10 +29,12 @@ import com.t0p47.mendeley.adapter.JournalArticleAdapter;
 import com.t0p47.mendeley.app.AppConfig;
 import com.t0p47.mendeley.app.AppController;
 import com.t0p47.mendeley.db.DatabaseHandler;
+import com.t0p47.mendeley.decor.DividerItemDecoration;
 import com.t0p47.mendeley.helper.Helper;
 import com.t0p47.mendeley.helper.SessionManager;
 import com.t0p47.mendeley.holder.ArrowExpandSelectableHeaderHolder;
 import com.t0p47.mendeley.holder.IconTreeItemHolder;
+import com.t0p47.mendeley.interfaces.RecyclerTouchListener;
 import com.t0p47.mendeley.model.Folder;
 import com.t0p47.mendeley.model.JournalArticle;
 
@@ -89,14 +91,14 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         session = new SessionManager(this);
         dbh = new DatabaseHandler(this);
-        dbh.recreateAllTables();
+        //dbh.recreateAllTables();
 
         foldersList = dbh.getAllFolders();
         articlesList = dbh.getRootFolderArticles();
 
 
-        getFolders();
-        getArticles();
+        //getFolders();
+        //getArticles();
 
 
         mHandler = new Handler();
@@ -106,10 +108,31 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         fab = (FloatingActionButton) findViewById(R.id.fab);
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
+        Log.d(TAG,"MainActivity articles count "+articlesList.size());
+
+        for(JournalArticle article : articlesList){
+            Log.d(TAG,"MainActivity: articles titles "+article.getTitle());
+        }
+
         mAdapter = new JournalArticleAdapter(articlesList);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
+        recyclerView.addItemDecoration(new DividerItemDecoration(this,LinearLayoutManager.VERTICAL));
+
+        recyclerView.addOnItemTouchListener(new RecyclerTouchListener(getApplicationContext(), recyclerView, new RecyclerTouchListener.ClickListener() {
+            @Override
+            public void onClick(View view, int position) {
+                JournalArticle article = articlesList.get(position);
+                Toast.makeText(getApplicationContext(), article.getTitle()+" is selected",Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onLongClick(View view, int position) {
+
+            }
+        }));
+
         recyclerView.setAdapter(mAdapter);
 
 
