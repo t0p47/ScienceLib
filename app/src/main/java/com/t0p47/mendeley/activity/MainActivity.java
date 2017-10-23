@@ -15,6 +15,8 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
@@ -50,17 +52,19 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener, TreeNode.TreeNodeLongClickListener {
 
 
-    //Coments changed(Now from laptop)
     private static final String TAG = "LOG_TAG";
 
     private static final String NAME = "Very long name for forlder";
     private AndroidTreeView treeView;
 
+    Animation FabOpen, FabClose,FabRClockwise, FabRanticlockwise;
+    boolean isFabOpen = false;
+
     private NavigationView navigationView;
     private DrawerLayout drawer;
     private View navHeader;
     private Toolbar toolbar;
-    private FloatingActionButton fab;
+    private FloatingActionButton fabPlus, fabTwit, fabFb;
     private ProgressDialog pDialog;
     private RecyclerView recyclerView;
     private JournalArticleAdapter mAdapter;
@@ -91,21 +95,23 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         session = new SessionManager(this);
         dbh = new DatabaseHandler(this);
-        //dbh.recreateAllTables();
+        dbh.recreateAllTables();
 
         foldersList = dbh.getAllFolders();
         articlesList = dbh.getRootFolderArticles();
 
 
-        //getFolders();
-        //getArticles();
+        getFolders();
+        getArticles();
 
 
         mHandler = new Handler();
 
         drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         navigationView = (NavigationView) findViewById(R.id.nav_view);
-        fab = (FloatingActionButton) findViewById(R.id.fab);
+        fabPlus = (FloatingActionButton) findViewById(R.id.fab_plus);
+        fabTwit = (FloatingActionButton) findViewById(R.id.fab_twitter);
+        fabFb = (FloatingActionButton) findViewById(R.id.fab_fb);
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
         Log.d(TAG,"MainActivity articles count "+articlesList.size());
@@ -141,11 +147,33 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         //Navigation view header
         navHeader = navigationView.getHeaderView(0);
 
+        FabOpen = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fab_open);
+        FabClose = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_close);
+        FabRClockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.rotate_clockwise);
+        FabRanticlockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.rotate_anticlockwise);
 
 
-        fab.setOnClickListener(new View.OnClickListener() {
+        fabPlus.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
+                if(isFabOpen){
+                    fabFb.startAnimation(FabClose);
+                    fabTwit.startAnimation(FabClose);
+                    fabPlus.startAnimation(FabRanticlockwise);
+
+                    fabFb.setClickable(false);
+                    fabTwit.setClickable(false);
+                    isFabOpen=false;
+                }else{
+                    fabFb.startAnimation(FabOpen);
+                    fabTwit.startAnimation(FabOpen);
+                    fabPlus.startAnimation(FabRClockwise);
+
+                    fabFb.setClickable(true);
+                    fabTwit.setClickable(true);
+                    isFabOpen=true;
+                }
                 Toast.makeText(MainActivity.this, "FAB", Toast.LENGTH_SHORT).show();
             }
         });
@@ -162,13 +190,15 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private void showArticlesInRootFolder(){
 
         Log.d(TAG,"MainActivity: notify adapter. Articles count "+articlesList.size());
-        mAdapter.notifyDataSetChanged();
-
+        mAdapter = new JournalArticleAdapter(articlesList);
+        //mAdapter.notifyDataSetChanged();
+        recyclerView.setAdapter(mAdapter);
     }
 
     private void getArticles(){
         if(dbh.getArticlesCount()==0){
             getFirstTimeArticles();
+            Log.d(TAG,"MainActivity: first time articles");
             //TODO: Elseif если в настройках стоит галочка синхронизировать при запуске
         }else{
             //loadArticles();
@@ -254,10 +284,6 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             @Override
             public void onResponse(String response) {
                 Log.d(TAG, "MainActivity: response " + response);
-                //response [{"id":109,"title":"ForTask2","authors":"Alex","abstract":null,"journal_id":"01","volume":null,
-                // "issue":null,"year":null,"pages":null,"ArXivID":null,"DOI":null,"PMID":null,"folder":2,
-                // "filepath":null,"1":0,"uid":19,"created_at":"2017-09-28 06:57:34",
-                // "updated_at":"2017-09-28 06:57:34","delete_date":"0000-00-00 00:00:00","favorite":1},{"id":111,"tit
 
                 try{
                     JSONArray jArr = new JSONArray(response);
@@ -322,7 +348,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                         }
                         dbh.recreateAllArticles(articlesList);
                         articlesList = dbh.getRootFolderArticles();
-                        Log.d(TAG,"MainActivity get articles after response: "+dbh.getRootFolderArticles().size());
+                        Log.d(TAG,"MainActivity get articles after response: "+articlesList.size());
                         showArticlesInRootFolder();
                     }else{
                         Log.d(TAG,"MainActivity: no articles on server");

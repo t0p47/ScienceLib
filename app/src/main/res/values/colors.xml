@@ -20,4 +20,7 @@
 
     <color name="year">#999999</color>
     <color name="title">#222222</color>
+    
+    <color name="fab1_color">#4CAF50</color>
+    <color name="fab2_color">#2196F3</color>
 </resources>

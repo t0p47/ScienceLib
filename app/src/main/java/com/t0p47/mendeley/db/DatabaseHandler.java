@@ -58,6 +58,10 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     private static final String KEY_ARTICLE_CREATED_AT = "created_at";
     private static final String KEY_ARTICLE_FAVORITE = "favorite";
 
+    private static final String KEY_IS_NEW = "is_new";
+    private static final String KEY_IS_CHANGE = "is_change";
+    private static final String KEY_IS_DELETE = "is_delete";
+
 
     public DatabaseHandler(Context context){
         super(context, DATABASE_NAME,null, DATABASE_VERSION);
@@ -75,13 +79,17 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 +KEY_ARTICLE_PAGES+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_ARXIVID+" INTEGER DEFAULT NULL,"
                 +KEY_ARTICLE_DOI+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_PMID+" INTEGER DEFAULT NULL,"
                 +KEY_ARTICLE_CREATED_AT+" TEXT,"+KEY_ARTICLE_FAVORITE+" INTEGER DEFAULT 0,"
-                +KEY_ARTICLE_FOLDER+" INTEGER DEFAULT 0,"+KEY_ARTICLE_FILEPATH+" TEXT DEFAULT NULL"+")";
+                +KEY_ARTICLE_FOLDER+" INTEGER DEFAULT 0,"+KEY_ARTICLE_FILEPATH+" TEXT DEFAULT NULL,"
+                +KEY_IS_NEW +" INTEGER DEFAULT 0,"+KEY_IS_CHANGE+" INTEGER DEFAULT 0,"
+                +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
         db.execSQL(CREATE_ARTICLES_TABLE);
 
         String CREATE_FOLDERS_TABLE = "CREATE TABLE "+TABLE_FOLDERS+"("
                 +KEY_LOCAL_ID+" INTEGER PRIMARY KEY AUTOINCREMENT,"
                 +KEY_GLOBAL_ID+" INTEGER DEFAULT 0,"+KEY_FOLDER_TITLE+" TEXT,"
-                +KEY_FOLDER_PARENT_ID+" INTEGER DEFAULT 0"+")";
+                +KEY_FOLDER_PARENT_ID+" INTEGER DEFAULT 0,"
+                +KEY_IS_NEW +" INTEGER DEFAULT 0,"+KEY_IS_CHANGE+" INTEGER DEFAULT 0,"
+                +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
         db.execSQL(CREATE_FOLDERS_TABLE);
 
     }
@@ -162,6 +170,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         for(JournalArticle article : articlesList){
             values = new ContentValues();
 
+            //Меняем глобальные id папок на локальные
             if(article.getFolder()!= 0){
                 String SELECT_Query = "SELECT "+KEY_LOCAL_ID+" FROM "+TABLE_FOLDERS+" WHERE "+KEY_GLOBAL_ID+"="+article.getFolder();
                 Cursor cursor = db.rawQuery(SELECT_Query,null);
