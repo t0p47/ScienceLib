@@ -35,7 +35,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginRight="@dimen/fab_margin_right"
         android:layout_marginBottom="180dp"
-        android:src="@drawable/ic_action_fb"
+        android:src="@drawable/ic_action_add_article"
         android:elevation="6dp"
         android:visibility="invisible"
         app:backgroundTint="@color/fab1_color"/>
@@ -47,7 +47,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginRight="@dimen/fab_margin_right"
         android:layout_marginBottom="100dp"
-        android:src="@drawable/ic_action_twitter"
+        android:src="@drawable/ic_action_add_folder"
         android:elevation="6dp"
         android:visibility="invisible"
         app:backgroundTint="@color/fab2_color"/>

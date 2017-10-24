@@ -58,7 +58,6 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     private static final String KEY_ARTICLE_CREATED_AT = "created_at";
     private static final String KEY_ARTICLE_FAVORITE = "favorite";
 
-    private static final String KEY_IS_NEW = "is_new";
     private static final String KEY_IS_CHANGE = "is_change";
     private static final String KEY_IS_DELETE = "is_delete";
 
@@ -80,15 +79,14 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 +KEY_ARTICLE_DOI+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_PMID+" INTEGER DEFAULT NULL,"
                 +KEY_ARTICLE_CREATED_AT+" TEXT,"+KEY_ARTICLE_FAVORITE+" INTEGER DEFAULT 0,"
                 +KEY_ARTICLE_FOLDER+" INTEGER DEFAULT 0,"+KEY_ARTICLE_FILEPATH+" TEXT DEFAULT NULL,"
-                +KEY_IS_NEW +" INTEGER DEFAULT 0,"+KEY_IS_CHANGE+" INTEGER DEFAULT 0,"
-                +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
+                +KEY_IS_CHANGE+" INTEGER DEFAULT 0," +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
         db.execSQL(CREATE_ARTICLES_TABLE);
 
         String CREATE_FOLDERS_TABLE = "CREATE TABLE "+TABLE_FOLDERS+"("
                 +KEY_LOCAL_ID+" INTEGER PRIMARY KEY AUTOINCREMENT,"
                 +KEY_GLOBAL_ID+" INTEGER DEFAULT 0,"+KEY_FOLDER_TITLE+" TEXT,"
                 +KEY_FOLDER_PARENT_ID+" INTEGER DEFAULT 0,"
-                +KEY_IS_NEW +" INTEGER DEFAULT 0,"+KEY_IS_CHANGE+" INTEGER DEFAULT 0,"
+                +KEY_IS_CHANGE+" INTEGER DEFAULT 0,"
                 +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
         db.execSQL(CREATE_FOLDERS_TABLE);
 
@@ -201,13 +199,60 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         }
     }
 
-    public void testAddFolders(){
+    public long addFolder(String title, int parentFolderId){
 
         SQLiteDatabase db = this.getWritableDatabase();
 
         ContentValues values = new ContentValues();
-        values.put(KEY_FOLDER_TITLE,"FirstFolder");
-        db.insert(TABLE_FOLDERS,null,values);
+        values.put(KEY_FOLDER_TITLE, title);
+        values.put(KEY_FOLDER_PARENT_ID, parentFolderId);
+
+        long newFolderId = db.insert(TABLE_FOLDERS,null,values);
+
+        return newFolderId;
+    }
+
+    public void addArtilcle(JournalArticle article){
+
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        /*
+        * +KEY_LOCAL_ID+" INTEGER PRIMARY KEY AUTOINCREMENT, "
+                +KEY_ARTICLE_MID+" INTEGER DEFAULT 0,"+KEY_ARTICLE_TITLE+" TEXT,"
+                +KEY_ARTICLE_AUTHORS+" TEXT,"+KEY_ARTICLE_ABSTRACT+" TEXT DEFAULT NULL,"
+                +KEY_ARTICLE_JOURNAL_ID +" INTEGER,"+KEY_ARTICLE_VOLUME+" INTEGER DEFAULT NULL,"
+                +KEY_ARTICLE_ISSUE+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_YEAR+" INTEGER DEFAULT NULL,"
+                +KEY_ARTICLE_PAGES+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_ARXIVID+" INTEGER DEFAULT NULL,"
+                +KEY_ARTICLE_DOI+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_PMID+" INTEGER DEFAULT NULL,"
+                +KEY_ARTICLE_CREATED_AT+" TEXT,"+KEY_ARTICLE_FAVORITE+" INTEGER DEFAULT 0,"
+                +KEY_ARTICLE_FOLDER+" INTEGER DEFAULT 0,"+KEY_ARTICLE_FILEPATH+" TEXT DEFAULT NULL,"
+                +KEY_IS_CHANGE+" INTEGER DEFAULT 0," +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
+        * */
+
+        ContentValues values = new ContentValues();
+        values.put(KEY_ARTICLE_TITLE,article.getTitle());
+        values.put(KEY_ARTICLE_AUTHORS, article.getAuthors());
+        values.put(KEY_ARTICLE_ABSTRACT, article.getAbstractField());
+        values.put(KEY_ARTICLE_JOURNAL_ID, article.getJournal());
+        values.put(KEY_ARTICLE_VOLUME, article.getVolume());
+        values.put(KEY_ARTICLE_ISSUE, article.getIssue());
+        values.put(KEY_ARTICLE_YEAR, article.getYear());
+        values.put(KEY_ARTICLE_PAGES,article.getPages());
+        values.put(KEY_ARTICLE_ARXIVID,article.getArXivID());
+        values.put(KEY_ARTICLE_DOI, article.getDOI());
+        values.put(KEY_ARTICLE_PMID, article.getPMID());
+        values.put(KEY_ARTICLE_CREATED_AT, article.getCreated_at());
+        values.put(KEY_ARTICLE_FOLDER, article.getFolder());
+
+        db.insert(TABLE_ARTICLES,null, values);
+
+    }
+
+    public void changeFolderTitle(int local_id, String folderTitle){
+
+        //TODO: Нужно посмотреть как делаются UPDATE
+        //TODO: Перенести WordLearner на GitLab
+
     }
 
     public List<JournalArticle> getRootFolderArticles(){

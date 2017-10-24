@@ -26,6 +26,11 @@ public class Folder {
         this.parent_id = parent_id;
     }
 
+    public Folder(String title, int parent_id){
+        this.title = title;
+        this.parent_id = parent_id;
+    }
+
     public int getLocal_id() {
         return local_id;
     }

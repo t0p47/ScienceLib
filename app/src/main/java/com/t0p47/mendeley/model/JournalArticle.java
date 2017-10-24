@@ -82,6 +82,21 @@ public class JournalArticle {
         this.favorite = favorite;
     }
 
+    //For local create
+    public JournalArticle(String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID) {
+        this.title = title;
+        this.authors = authors;
+        this.abstractField = abstractField;
+        this.journal = journal;
+        this.volume = volume;
+        this.issue = issue;
+        this.year = year;
+        this.pages = pages;
+        ArXivID = arXivID;
+        this.DOI = DOI;
+        this.PMID = PMID;
+    }
+
     public int getLocal_id() {
         return local_id;
     }

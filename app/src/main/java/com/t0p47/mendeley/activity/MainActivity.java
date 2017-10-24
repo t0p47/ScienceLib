@@ -1,6 +1,7 @@
 package com.t0p47.mendeley.activity;
 
 import android.app.ProgressDialog;
+import android.icu.text.SimpleDateFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
@@ -17,6 +18,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
@@ -32,6 +34,8 @@ import com.t0p47.mendeley.app.AppConfig;
 import com.t0p47.mendeley.app.AppController;
 import com.t0p47.mendeley.db.DatabaseHandler;
 import com.t0p47.mendeley.decor.DividerItemDecoration;
+import com.t0p47.mendeley.dialog.NewArticleDialog;
+import com.t0p47.mendeley.dialog.NewFolderDialog;
 import com.t0p47.mendeley.helper.Helper;
 import com.t0p47.mendeley.helper.SessionManager;
 import com.t0p47.mendeley.holder.ArrowExpandSelectableHeaderHolder;
@@ -44,12 +48,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener, TreeNode.TreeNodeLongClickListener {
+public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener, TreeNode.TreeNodeLongClickListener
+, NewFolderDialog.NewFolderDialogListener, NewArticleDialog.NewArticleDialogListener {
 
     //Laptop changes
     private static final String TAG = "LOG_TAG";
@@ -62,9 +69,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
     private NavigationView navigationView;
     private DrawerLayout drawer;
-    private View navHeader;
     private Toolbar toolbar;
-    private FloatingActionButton fabPlus, fabTwit, fabFb;
+    private FloatingActionButton fabPlus, fabAddFolder, fabAddArticle;
     private ProgressDialog pDialog;
     private RecyclerView recyclerView;
     private JournalArticleAdapter mAdapter;
@@ -73,6 +79,9 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     List<Folder> foldersList;
     List<JournalArticle> articlesList;
 
+
+    private int currentFolderId = 0;
+    private int changingFolderId = 0;
     public static int navItemIndex = 0;
 
     //private List<String> activityTitle;
@@ -110,8 +119,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         navigationView = (NavigationView) findViewById(R.id.nav_view);
         fabPlus = (FloatingActionButton) findViewById(R.id.fab_plus);
-        fabTwit = (FloatingActionButton) findViewById(R.id.fab_twitter);
-        fabFb = (FloatingActionButton) findViewById(R.id.fab_fb);
+        fabAddFolder = (FloatingActionButton) findViewById(R.id.fab_twitter);
+        fabAddArticle = (FloatingActionButton) findViewById(R.id.fab_fb);
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
         Log.d(TAG,"MainActivity articles count "+articlesList.size());
@@ -141,12 +150,6 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         recyclerView.setAdapter(mAdapter);
 
-
-
-
-        //Navigation view header
-        navHeader = navigationView.getHeaderView(0);
-
         FabOpen = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fab_open);
         FabClose = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_close);
         FabRClockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.rotate_clockwise);
@@ -158,23 +161,37 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             public void onClick(View view) {
 
                 if(isFabOpen){
-                    fabFb.startAnimation(FabClose);
-                    fabTwit.startAnimation(FabClose);
+                    fabAddArticle.startAnimation(FabClose);
+                    fabAddFolder.startAnimation(FabClose);
                     fabPlus.startAnimation(FabRanticlockwise);
 
-                    fabFb.setClickable(false);
-                    fabTwit.setClickable(false);
+                    fabAddArticle.setClickable(false);
+                    fabAddFolder.setClickable(false);
                     isFabOpen=false;
                 }else{
-                    fabFb.startAnimation(FabOpen);
-                    fabTwit.startAnimation(FabOpen);
+                    fabAddArticle.startAnimation(FabOpen);
+                    fabAddFolder.startAnimation(FabOpen);
                     fabPlus.startAnimation(FabRClockwise);
 
-                    fabFb.setClickable(true);
-                    fabTwit.setClickable(true);
+                    fabAddArticle.setClickable(true);
+                    fabAddFolder.setClickable(true);
                     isFabOpen=true;
                 }
                 Toast.makeText(MainActivity.this, "FAB", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        fabAddArticle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showNewArticleDialog();
+            }
+        });
+
+        fabAddFolder.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showNewFolderDialog();
             }
         });
 
@@ -187,7 +204,82 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
     }
 
-    private void showArticlesInRootFolder(){
+    private void showNewArticleDialog(){
+        android.app.FragmentManager fragmentManager = getFragmentManager();
+        NewArticleDialog newArticleDialog = new NewArticleDialog();
+        newArticleDialog.setCancelable(true);
+        newArticleDialog.setDialogTitle("Article title");
+        newArticleDialog.show(fragmentManager, "InputDialog");
+    }
+
+    @Override
+    public void onFinishNewArticleDialog(JournalArticle article){
+
+        Toast.makeText(this, "New article name: "+article.getTitle(), Toast.LENGTH_SHORT).show();
+        article.setFolder(currentFolderId);
+        Date date = new Date();
+        //PHP: 2017-09-28 06:57:34
+        //JAVA: Tue Oct 24 16:41:50 GMT+07:00 2017
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+        String formattedDate = dateFormat.format(date);
+        Log.d(TAG,"MainActivity: current date: "+formattedDate);
+        article.setCreated_at(formattedDate);
+        articlesList.add(article);
+        mAdapter.notifyDataSetChanged();
+        dbh.addArtilcle(article);
+    }
+
+    private void showNewFolderDialog() {
+        android.app.FragmentManager fragmentManager = getFragmentManager();
+        NewFolderDialog newFolderDialog = new NewFolderDialog();
+        newFolderDialog.setCancelable(true);
+        newFolderDialog.setDialogTitle("Folder title");
+        newFolderDialog.setIsRename(false);
+        newFolderDialog.show(fragmentManager, "InputDialog");
+    }
+
+    @Override
+    public void onFinishNewFolderDialog(String newFolderTitle){
+        Toast.makeText(this, "New folder name: "+newFolderTitle, Toast.LENGTH_SHORT).show();
+        createNewFolder(newFolderTitle);
+    }
+
+    private void showRenameFolderDialog(String oldFolderTitle) {
+        android.app.FragmentManager fragmentManager = getFragmentManager();
+        NewFolderDialog newFolderDialog = new NewFolderDialog();
+        newFolderDialog.setCancelable(true);
+        newFolderDialog.setDialogTitle("Rename folder");
+        newFolderDialog.setFolderTitle(oldFolderTitle);
+        newFolderDialog.setIsRename(true);
+        newFolderDialog.show(fragmentManager, "InputDialog");
+    }
+
+    @Override
+    public void onFinishRenameFolderDialog(String newTitleFolder){
+        Toast.makeText(this, "Renamed folder name: "+newTitleFolder, Toast.LENGTH_SHORT).show();
+        renameFolder(newTitleFolder);
+    }
+
+    private void renameFolder(String folderTitle){
+        dbh.changeFolderTitle(changingFolderId, folderTitle);
+        TreeNode changingNode = foldersTreeIds.get(changingFolderId);
+        TextView nameView = (TextView) changingNode.getViewHolder().getView().findViewById(R.id.node_value);
+        nameView.setText(folderTitle);
+    }
+
+    private void createNewFolder(String newFolderTitle){
+        int newFolderId = (int) dbh.addFolder(newFolderTitle,currentFolderId);
+        Folder folder = new Folder(newFolderTitle,currentFolderId);
+        folder.setLocal_id(newFolderId);
+        foldersList.add(folder);
+
+        TreeNode newTreeNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, folder.getTitle(), folder.getLocal_id()));
+
+        foldersTreeIds.put(folder.getLocal_id(),newTreeNode);
+        treeView.addNode(foldersTreeIds.get(currentFolderId),newTreeNode);
+    }
+
+    private void showArticles(){
 
         Log.d(TAG,"MainActivity: notify adapter. Articles count "+articlesList.size());
         mAdapter = new JournalArticleAdapter(articlesList);
@@ -349,7 +441,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                         dbh.recreateAllArticles(articlesList);
                         articlesList = dbh.getRootFolderArticles();
                         Log.d(TAG,"MainActivity get articles after response: "+articlesList.size());
-                        showArticlesInRootFolder();
+                        showArticles();
                     }else{
                         Log.d(TAG,"MainActivity: no articles on server");
                     }
@@ -391,7 +483,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         StringRequest strReq = new StringRequest(Request.Method.GET, AppConfig.URL_REFRESH_TOKEN, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.d(TAG, "MainActivity: response " + response.toString());
+                Log.d(TAG, "MainActivity: response " + response);
                 hideDialog();
 
                 try{
@@ -425,6 +517,11 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
 
+    }
+
+    private void loadArticlesInFolder(int folderId){
+        articlesList = dbh.getArticlesInFolder(folderId);
+        showArticles();
     }
 
     private void loadFolder(){
@@ -474,12 +571,24 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     @Override
     public void onClick(TreeNode node, Object value) {
         Toast.makeText(this, "Click folder", Toast.LENGTH_SHORT).show();
-        Log.d(TAG, "MainActivity: treeNode "+node+", value: "+((IconTreeItemHolder.IconTreeItem)value).local_folder_id);
+        int localFolderId = ((IconTreeItemHolder.IconTreeItem)value).local_folder_id;
+        //Log.d(TAG, "MainActivity: treeNode "+node+", value: "+localFolderId);
+        if(currentFolderId!=localFolderId){
+            currentFolderId=localFolderId;
+            loadArticlesInFolder(currentFolderId);
+            setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
+        }
     }
 
     @Override
     public boolean onLongClick(TreeNode node, Object value){
         Toast.makeText(this, "Long click folder", Toast.LENGTH_SHORT).show();
+
+        changingFolderId = ((IconTreeItemHolder.IconTreeItem)value).local_folder_id;
+
+        String folderTitle = ((IconTreeItemHolder.IconTreeItem)value).text;
+        showRenameFolderDialog(folderTitle);
+
         return false;
     }
 
@@ -498,5 +607,9 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         if(pDialog.isShowing()){
             pDialog.dismiss();
         }
+    }
+
+    private void setToolbarTilte(String title){
+        getSupportActionBar().setTitle(title);
     }
 }
