@@ -11,6 +11,7 @@ import com.t0p47.mendeley.model.Folder;
 import com.t0p47.mendeley.model.JournalArticle;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -71,7 +72,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         String CREATE_ARTICLES_TABLE = "CREATE TABLE "+TABLE_ARTICLES+"("
                 +KEY_LOCAL_ID+" INTEGER PRIMARY KEY AUTOINCREMENT, "
-                +KEY_ARTICLE_MID+" INTEGER DEFAULT 0,"+KEY_ARTICLE_TITLE+" TEXT,"
+                +KEY_GLOBAL_ID+" INTEGER DEFAULT 0,"+KEY_ARTICLE_TITLE+" TEXT,"
                 +KEY_ARTICLE_AUTHORS+" TEXT,"+KEY_ARTICLE_ABSTRACT+" TEXT DEFAULT NULL,"
                 +KEY_ARTICLE_JOURNAL_ID +" INTEGER,"+KEY_ARTICLE_VOLUME+" INTEGER DEFAULT NULL,"
                 +KEY_ARTICLE_ISSUE+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_YEAR+" INTEGER DEFAULT NULL,"
@@ -177,7 +178,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 }
                 cursor.close();
             }
-            values.put(KEY_ARTICLE_MID, article.getGlobal_id());
+            values.put(KEY_GLOBAL_ID, article.getGlobal_id());
             values.put(KEY_ARTICLE_TITLE, article.getTitle());
             values.put(KEY_ARTICLE_AUTHORS, article.getAuthors());
             values.put(KEY_ARTICLE_ABSTRACT, article.getAbstractField());
@@ -215,19 +216,6 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     public void addArtilcle(JournalArticle article){
 
         SQLiteDatabase db = this.getWritableDatabase();
-
-        /*
-        * +KEY_LOCAL_ID+" INTEGER PRIMARY KEY AUTOINCREMENT, "
-                +KEY_ARTICLE_MID+" INTEGER DEFAULT 0,"+KEY_ARTICLE_TITLE+" TEXT,"
-                +KEY_ARTICLE_AUTHORS+" TEXT,"+KEY_ARTICLE_ABSTRACT+" TEXT DEFAULT NULL,"
-                +KEY_ARTICLE_JOURNAL_ID +" INTEGER,"+KEY_ARTICLE_VOLUME+" INTEGER DEFAULT NULL,"
-                +KEY_ARTICLE_ISSUE+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_YEAR+" INTEGER DEFAULT NULL,"
-                +KEY_ARTICLE_PAGES+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_ARXIVID+" INTEGER DEFAULT NULL,"
-                +KEY_ARTICLE_DOI+" INTEGER DEFAULT NULL,"+KEY_ARTICLE_PMID+" INTEGER DEFAULT NULL,"
-                +KEY_ARTICLE_CREATED_AT+" TEXT,"+KEY_ARTICLE_FAVORITE+" INTEGER DEFAULT 0,"
-                +KEY_ARTICLE_FOLDER+" INTEGER DEFAULT 0,"+KEY_ARTICLE_FILEPATH+" TEXT DEFAULT NULL,"
-                +KEY_IS_CHANGE+" INTEGER DEFAULT 0," +KEY_IS_DELETE+" INTEGER DEFAULT 0"+")";
-        * */
 
         ContentValues values = new ContentValues();
         values.put(KEY_ARTICLE_TITLE,article.getTitle());
@@ -325,5 +313,19 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         articlesCount = cursor.getCount();
 
         return articlesCount;
+    }
+
+    public String composeJSONFromFolders(){
+        ArrayList<HashMap<String,String>> foldersList;
+        foldersList = new ArrayList<>();
+        String selectQuery = "SELECT * FROM "+TABLE_FOLDERS;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery(selectQuery,null);
+        if(cursor.moveToFirst()){
+            do{
+                HashMap<String,String> map = new HashMap<>();
+                map.put("name",cursor)
+            }while(cursor.moveToNext());
+        }
     }
 }

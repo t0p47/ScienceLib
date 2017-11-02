@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -13,11 +14,14 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -64,8 +68,9 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private static final String NAME = "Very long name for forlder";
     private AndroidTreeView treeView;
 
-    Animation FabOpen, FabClose,FabRClockwise, FabRanticlockwise;
+    Animation FabOpen, FabClose,FabRClockwise, FabRanticlockwise, RefreshClockwise;
     boolean isFabOpen = false;
+    MenuItem refreshMenuItem;
 
     private NavigationView navigationView;
     private DrawerLayout drawer;
@@ -110,8 +115,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         articlesList = dbh.getRootFolderArticles();
 
 
-        getFolders();
-        getArticles();
+        //getFolders();
+        //getArticles();
 
 
         mHandler = new Handler();
@@ -154,6 +159,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         FabClose = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_close);
         FabRClockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.rotate_clockwise);
         FabRanticlockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.rotate_anticlockwise);
+
+        RefreshClockwise = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.rotate_clockwise_full);
 
 
         fabPlus.setOnClickListener(new View.OnClickListener() {
@@ -276,7 +283,14 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         TreeNode newTreeNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, folder.getTitle(), folder.getLocal_id()));
 
         foldersTreeIds.put(folder.getLocal_id(),newTreeNode);
-        treeView.addNode(foldersTreeIds.get(currentFolderId),newTreeNode);
+
+        if(currentFolderId==0){
+            Log.d(TAG,"MainActivity: another root folder created");
+            TreeNode root = TreeNode.root();
+            root.addChild(newTreeNode);
+        }else{
+            treeView.addNode(foldersTreeIds.get(currentFolderId),newTreeNode);
+        }
     }
 
     private void showArticles(){
@@ -489,7 +503,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                 try{
                     JSONObject jObj = new JSONObject(response);
 
-                    String token = jObj.getString("refreshedToken");
+                    String token = jObj.getString("token");
 
                     session.setAuthToken(token);
                 }catch(JSONException e){
@@ -607,6 +621,48 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         if(pDialog.isShowing()){
             pDialog.dismiss();
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.main, menu);
+
+        //TODO: Не могу получить getActionView(все время null) для создания анимации
+        MenuItem searchItem = menu.findItem(R.id.action_refresh);
+        ImageView searchView =
+                (ImageView) MenuItemCompat.getActionView(searchItem);
+
+        Log.d(TAG,"MainActivity: onCreateOptionsMenu "+searchView);
+
+        // Configure the search info and add any event listeners...
+
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        int id = item.getItemId();
+
+        Log.d(TAG,"MainActivity: onOptionItemSelected "+item.getActionView());
+
+        if(id == R.id.action_refresh){
+
+            Toast.makeText(this, "Refresh", Toast.LENGTH_SHORT).show();
+            syncFolders();
+            syncArticles();
+            //fabPlus.startAnimation(FabRanticlockwise);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void syncFolders(){
+
+    }
+
+    private void syncArticles(){
+
     }
 
     private void setToolbarTilte(String title){

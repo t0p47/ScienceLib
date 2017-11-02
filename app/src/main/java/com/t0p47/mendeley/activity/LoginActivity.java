@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -58,9 +59,14 @@ public class LoginActivity extends AppCompatActivity {
 
         //Check if user already logged in or not
         if(session.isLoggedIn()){
+
+            Log.d(TAG,"LoginActivity: starting token refresh");
+            refreshToken();
             Intent intent = new Intent(LoginActivity.this,MainActivity.class);
             startActivity(intent);
             finish();
+        }else{
+            Toast.makeText(this, "Need to login",Toast.LENGTH_SHORT).show();
         }
 
         btnLogin.setOnClickListener(new View.OnClickListener() {
@@ -122,7 +128,14 @@ public class LoginActivity extends AppCompatActivity {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.e(TAG,"LoginActivity: error "+error.getMessage());
+                if(error!=null){
+                    Log.e(TAG,"LoginActivity: checkLogin onErrorResponse "+error.getMessage()+", status code "+error.networkResponse.statusCode
+                            +", networkResponseData "+error.toString());
+                }else{
+                    Log.e(TAG,"LoginActivity: checkLogin onErrorResponse "+error.getMessage());
+                }
+
+
                 Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
                 hideDialog();
             }
@@ -136,6 +149,47 @@ public class LoginActivity extends AppCompatActivity {
                 params.put("password",password);
 
                 return params;
+            }
+        };
+
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    private void refreshToken(){
+        String tag_string_req = "req_token_refresh";
+
+        StringRequest strReq = new StringRequest(Request.Method.GET, AppConfig.URL_REFRESH_TOKEN, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "LoginActivity: refreshToken response " + response);
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+
+                    String token = jObj.getString("token");
+
+                    Log.d(TAG,"LoginActivity: refreshed token: "+token);
+
+                    session.setAuthToken(token);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "JSON error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG,"LoginActivity: refreshToken onErrorResponse "+error.getMessage()+", status code "+error.networkResponse.statusCode
+                    +", networkResponseData "+error.toString());
+            }
+        }){
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<String,String>();
+                String token = "Bearer "+session.getAuthToken();
+                Log.d(TAG,"LoginActivity: token to refresh(expired): "+token);
+                headers.put("Authorization",token);
+                return headers;
             }
         };
 
