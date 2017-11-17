@@ -1,7 +1,8 @@
 package com.t0p47.mendeley.activity;
 
+import android.app.FragmentManager;
 import android.app.ProgressDialog;
-import android.icu.text.SimpleDateFormat;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
@@ -20,16 +21,18 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.github.johnkil.print.PrintView;
 import com.t0p47.library.model.TreeNode;
 import com.t0p47.library.view.AndroidTreeView;
 import com.t0p47.mendeley.R;
@@ -38,6 +41,7 @@ import com.t0p47.mendeley.app.AppConfig;
 import com.t0p47.mendeley.app.AppController;
 import com.t0p47.mendeley.db.DatabaseHandler;
 import com.t0p47.mendeley.decor.DividerItemDecoration;
+import com.t0p47.mendeley.dialog.FolderToolDialog;
 import com.t0p47.mendeley.dialog.NewArticleDialog;
 import com.t0p47.mendeley.dialog.NewFolderDialog;
 import com.t0p47.mendeley.helper.Helper;
@@ -52,15 +56,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity implements TreeNode.TreeNodeClickListener, TreeNode.TreeNodeLongClickListener
-, NewFolderDialog.NewFolderDialogListener, NewArticleDialog.NewArticleDialogListener {
+, NewFolderDialog.NewFolderDialogListener, NewArticleDialog.NewArticleDialogListener, FolderToolDialog.FolderToolDialogListener {
 
     //Laptop changes
     private static final String TAG = "LOG_TAG";
@@ -109,14 +113,23 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         session = new SessionManager(this);
         dbh = new DatabaseHandler(this);
-        dbh.recreateAllTables();
+
+        Intent intent = getIntent();
+        if(intent.hasExtra("restart")){
+            Log.d(TAG,"MainActivity: INTENT. Restart activity");
+        }else{
+            Log.d(TAG,"MainActivity: INTENT. First start activity");
+            dbh.recreateAllTables();
+        }
+
 
         foldersList = dbh.getAllFolders();
         articlesList = dbh.getRootFolderArticles();
 
+        //syncFolders();
 
-        //getFolders();
-        //getArticles();
+        getFolders();
+        getArticles();
 
 
         mHandler = new Handler();
@@ -204,10 +217,10 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         setupNavigationView();
 
-        if(savedInstanceState == null){
+        /*if(savedInstanceState == null){
             navItemIndex=0;
             loadFolder();
-        }
+        }*/
 
     }
 
@@ -233,7 +246,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         article.setCreated_at(formattedDate);
         articlesList.add(article);
         mAdapter.notifyDataSetChanged();
-        dbh.addArtilcle(article);
+        dbh.addLocalArtilcle(article);
     }
 
     private void showNewFolderDialog() {
@@ -249,6 +262,46 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     public void onFinishNewFolderDialog(String newFolderTitle){
         Toast.makeText(this, "New folder name: "+newFolderTitle, Toast.LENGTH_SHORT).show();
         createNewFolder(newFolderTitle);
+    }
+
+    private void showFolderToolDialog(){
+        FragmentManager fragmentManager = getFragmentManager();
+        FolderToolDialog folderToolDialog = new FolderToolDialog();
+        folderToolDialog.setCancelable(true);
+        folderToolDialog.show(fragmentManager,"Folder tool");
+
+    }
+
+    @Override
+    public void onFinishAddFolder(){
+        showNewFolderDialog();
+    }
+
+    @Override
+    public void onFinishRenameFolder(){
+
+
+        String currentLongFolderTitle = ((TextView)foldersTreeIds.get(changingFolderId)
+                .getViewHolder().getView().findViewById(R.id.node_value)).getText().toString();
+        changingFolderId = 0;
+
+        showRenameFolderDialog(currentLongFolderTitle);
+    }
+
+    @Override
+    public void onFinishDeleteFolder(){
+        dbh.deleteFolder(changingFolderId);
+
+        TreeNode deleteNode = foldersTreeIds.get(changingFolderId);
+        TreeNode changingNode = deleteNode.getParent();
+
+        treeView.removeNode(deleteNode);
+        if(changingNode.isLeaf()){
+            PrintView arrowView = changingNode.getViewHolder().getView().findViewById(R.id.arrow_icon);
+            arrowView.setVisibility(View.GONE);
+        }
+
+        changingFolderId = 0;
     }
 
     private void showRenameFolderDialog(String oldFolderTitle) {
@@ -270,27 +323,62 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private void renameFolder(String folderTitle){
         dbh.changeFolderTitle(changingFolderId, folderTitle);
         TreeNode changingNode = foldersTreeIds.get(changingFolderId);
+        changingFolderId=0;
         TextView nameView = (TextView) changingNode.getViewHolder().getView().findViewById(R.id.node_value);
         nameView.setText(folderTitle);
     }
 
     private void createNewFolder(String newFolderTitle){
-        int newFolderId = (int) dbh.addFolder(newFolderTitle,currentFolderId);
-        Folder folder = new Folder(newFolderTitle,currentFolderId);
+
+        int newFolderId;
+        Folder folder;
+        if(changingFolderId!=0){
+            newFolderId = (int) dbh.addLocalFolder(newFolderTitle,changingFolderId);
+            folder = new Folder(newFolderTitle,changingFolderId);
+        }else{
+            newFolderId = (int) dbh.addLocalFolder(newFolderTitle,currentFolderId);
+            folder = new Folder(newFolderTitle,currentFolderId);
+        }
+
         folder.setLocal_id(newFolderId);
         foldersList.add(folder);
 
-        TreeNode newTreeNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, folder.getTitle(), folder.getLocal_id()));
+        //Есть локальные папки
+        if(foldersTreeIds!=null){
+            Log.d(TAG,"MainActivity: new non-root folder");
+            TreeNode newTreeNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, folder.getTitle(), folder.getLocal_id()));
 
-        foldersTreeIds.put(folder.getLocal_id(),newTreeNode);
+            foldersTreeIds.put(folder.getLocal_id(),newTreeNode);
 
-        if(currentFolderId==0){
-            Log.d(TAG,"MainActivity: another root folder created");
-            TreeNode root = TreeNode.root();
-            root.addChild(newTreeNode);
+
+            //После LongClick
+            if(changingFolderId!=0){
+                TreeNode changingNode = foldersTreeIds.get(changingFolderId);
+
+                treeView.addNode(foldersTreeIds.get(changingFolderId),newTreeNode);
+
+                if(!changingNode.isLeaf()){
+                    PrintView arrowView = changingNode.getViewHolder().getView().findViewById(R.id.arrow_icon);
+                    arrowView.setVisibility(View.VISIBLE);
+                }
+
+
+
+
+
+                changingFolderId = 0;
+            //Добавляем в текущую папку
+            }else{
+                TreeNode root = TreeNode.root();
+                root.addChild(newTreeNode);
+            }
+        //Добавляем первую папку(Локальных папок нет вообще)
         }else{
-            treeView.addNode(foldersTreeIds.get(currentFolderId),newTreeNode);
+            Log.d(TAG,"MainActivity: new ROOT folder");
+            loadFolder();
         }
+
+
     }
 
     private void showArticles(){
@@ -315,6 +403,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         if(foldersList.size()==0){
             getFirstTimeFolders();
+            Log.d(TAG,"MainActivity: getFirstTimeFolders");
             //TODO: Elseif если в настройках стоит галочка синхронизировать при запуске
         }else{
             Log.d(TAG,"MainActivity: folders exists");
@@ -330,7 +419,6 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             public void onResponse(String response) {
                 Log.d(TAG, "MainActivity: response " + response);
 
-                //TODO:Parse folders from server
                 try{
                     JSONArray jArr = new JSONArray(response);
                     foldersList  = new ArrayList<>();
@@ -362,10 +450,17 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                     //TODO: Возможно нужно сделать так что бы функция
                     // вызывалась при успешном окончании refreshToken(что то, типа Invoke(Unity))
                     refreshToken();
+                    getFirstTimeFolders();
 
                 }
                 Log.e(TAG,"MainActivity: onErrorResponse"+error.getMessage()+", status code "+error.networkResponse.statusCode
                         +", networkResponseData: "+error.toString());
+
+                NetworkResponse networkResponse = error.networkResponse;
+                if(networkResponse != null && networkResponse.data != null){
+                    String jsonError = new String(networkResponse.data);
+                    Log.d(TAG,"MainActivity: getFirstTimeFolders networkResponseError "+jsonError);
+                }
             }
         }){
             @Override
@@ -441,15 +536,18 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                                 folder = jObj.getInt("folder");
                             }
 
-                            String filepath = jObj.getString("filepath");
-                            String created_at = jObj.getString("created_at");
-
                             int favorite = 0;
                             if(!jObj.get("favorite").equals(null)){
                                 favorite = jObj.getInt("favorite");
                             }
 
-                            JournalArticle article = new JournalArticle(global_id, title, authors, abstractText,journal,volume,issue,year,pages,ArXivID,DOI,PMID,folder,filepath,created_at,favorite);
+                            String filepath = jObj.getString("filepath");
+                            String created_at = jObj.getString("created_at");
+                            String updated_at = jObj.getString("updated_at");
+
+
+
+                            JournalArticle article = new JournalArticle(global_id, title, authors, abstractText,journal,volume,issue,year,pages,ArXivID,DOI,PMID,folder,filepath,created_at, updated_at,favorite);
                             articlesList.add(article);
                         }
                         dbh.recreateAllArticles(articlesList);
@@ -471,7 +569,12 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             @Override
             public void onErrorResponse(VolleyError error) {
                 Log.e(TAG, "MainActivity: getFirstTimeArticle error "+error.getMessage());
-                Toast.makeText(getApplicationContext(),"Article sync error "+error.getMessage(), Toast.LENGTH_LONG).show();
+
+                NetworkResponse networkResponse = error.networkResponse;
+                if(networkResponse != null && networkResponse.data != null){
+                    String jsonError = new String(networkResponse.data);
+                    Log.d(TAG,"MainActivity: getFirstTimeArticles networkResponseError "+jsonError);
+                }
             }
         }){
 
@@ -539,36 +642,45 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     }
 
     private void loadFolder(){
-        ViewGroup containerView = (ViewGroup) findViewById(R.id.container);
+        Log.d(TAG,"MainActivity: loadFolder");
+        if(foldersTreeIds==null){
+            Log.d(TAG,"MainActivity: folderTreeIds is NULL");
+            ViewGroup containerView = (ViewGroup) findViewById(R.id.container);
 
-        TreeNode root = TreeNode.root();
+            TreeNode root = TreeNode.root();
 
-        foldersTreeIds = new HashMap<>();
+            foldersTreeIds = new HashMap<>();
 
-        for (Folder folder : foldersList) {
-            if(folder.getParent_id()==0){
-                TreeNode treeNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, folder.getTitle(),folder.getLocal_id()));
-                foldersTreeIds.put(folder.getLocal_id(),treeNode);
-                root.addChild(treeNode);
-            }else{
-                TreeNode child = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder,folder.getTitle(),folder.getLocal_id()));
-                TreeNode parent = foldersTreeIds.get(folder.getParent_id());
-                Log.d(TAG,"MainActivity: null parent: "+parent+", child: "+child);
-                parent.addChild(child);
-                foldersTreeIds.put(folder.getLocal_id(),child);
+            Log.d(TAG,"MainActivity: loadFolder foldersList count: "+foldersList.size());
+
+            for (Folder folder : foldersList) {
+                if(folder.getParent_id()==0){
+                    TreeNode treeNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, folder.getTitle(),folder.getLocal_id()));
+                    foldersTreeIds.put(folder.getLocal_id(),treeNode);
+                    root.addChild(treeNode);
+                }else{
+                    TreeNode child = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder,folder.getTitle(),folder.getLocal_id()));
+                    TreeNode parent = foldersTreeIds.get(folder.getParent_id());
+                    Log.d(TAG,"MainActivity: null parent: "+parent+", child: "+child);
+                    parent.addChild(child);
+                    foldersTreeIds.put(folder.getLocal_id(),child);
+                }
             }
+
+            treeView = new AndroidTreeView(this, root);
+            treeView.setDefaultAnimation(true);
+            treeView.setUse2dScroll(true);
+            //TODO: Custom
+            treeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
+            treeView.setDefaultNodeClickListener(this);
+            treeView.setDefaultNodeLongClickListener(this);
+            treeView.setDefaultViewHolder(ArrowExpandSelectableHeaderHolder.class);
+            containerView.addView(treeView.getView());
+            treeView.setUseAutoToggle(false);
+        }else{
+            Log.d(TAG,"MainActivity: folderTreeIds is NOT NULL");
         }
 
-        treeView = new AndroidTreeView(this, root);
-        treeView.setDefaultAnimation(true);
-        treeView.setUse2dScroll(true);
-        //TODO: Custom
-        treeView.setDefaultContainerStyle(R.style.TreeNodeStyle);
-        treeView.setDefaultNodeClickListener(this);
-        treeView.setDefaultNodeLongClickListener(this);
-        treeView.setDefaultViewHolder(ArrowExpandSelectableHeaderHolder.class);
-        containerView.addView(treeView.getView());
-        treeView.setUseAutoToggle(false);
     }
 
     private void setupNavigationView(){
@@ -600,8 +712,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         changingFolderId = ((IconTreeItemHolder.IconTreeItem)value).local_folder_id;
 
-        String folderTitle = ((IconTreeItemHolder.IconTreeItem)value).text;
-        showRenameFolderDialog(folderTitle);
+        showFolderToolDialog();
 
         return false;
     }
@@ -648,21 +759,366 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         if(id == R.id.action_refresh){
 
             Toast.makeText(this, "Refresh", Toast.LENGTH_SHORT).show();
+
             syncFolders();
-            syncArticles();
+
+            //syncArticles();
             //fabPlus.startAnimation(FabRanticlockwise);
             return true;
+        }
+
+        if(id == R.id.action_request_back){
+
+            Toast.makeText(this, "Send request bacl", Toast.LENGTH_SHORT).show();
+
+            //folderSyncRequestBack();
+            articleSyncRequestBack();
+            return true;
+
         }
 
         return super.onOptionsItemSelected(item);
     }
 
     private void syncFolders(){
+        final String foldersListStr = dbh.composeJSONFromFolders();
 
+        String tag_string_req = "req_sync_folders";
+
+        StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_SEND_FOLDERS, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "MainActivity: sendFoldersResponse " + response);
+
+                //TODO:Распарсить ответ
+
+
+                JSONObject obj = null;
+                try {
+                    obj = new JSONObject(response);
+
+                    JSONArray globalIdNamesArr = obj.getJSONArray("global_ids");
+                    JSONArray local_dataArr = obj.getJSONArray("local_data");
+                    JSONArray needToDeleteArr = obj.getJSONArray("needToDelete");
+
+                    for(int i =0;i<needToDeleteArr.length();i++){
+
+                        JSONObject needToDeleteObj = needToDeleteArr.getJSONObject(i);
+                        int global_id = needToDeleteObj.getInt("global_id");
+
+                        dbh.deleteGlobalArticle(global_id);
+                    }
+
+                    for(int i = 0;i<local_dataArr.length();i++){
+
+                        JSONObject localFolderObj = local_dataArr.getJSONObject(i);
+                        int global_id = localFolderObj.getInt("global_id");
+                        int local_id = localFolderObj.getInt("local_id");
+                        int is_delete = localFolderObj.getInt("is_delete");
+
+
+                        dbh.disableIsNewFolder();
+                        dbh.disableIsRenameFolder();
+
+                        //TODO: Если global_id вернувшейся папки равно 0, то родитель папки был удален и эту папку
+                        //TODO: тоже нужно удалить
+                        if(global_id==0){
+                            dbh.deleteParentFolder(local_id);
+                            continue;
+                        //TODO:Если global_id вернувшейся папки равен -1, то просто удалить папки
+                        }else if(global_id==-1){
+                            dbh.deleteGlobalFolder(local_id);
+                            continue;
+                        }
+
+                        //TODO: Если is_delete вернувшейся папки равно единице, то удаляем её
+                        if(is_delete==1){
+                            dbh.deleteGlobalFolder(local_id);
+                        }
+                    }
+
+                    //Вторая часть
+
+                    for(int i = 0;i<globalIdNamesArr.length();i++){
+
+
+
+                        JSONObject globalFolderData = globalIdNamesArr.getJSONObject(i);
+                        //int global_id = globalFolderData.getInt("id");
+
+                        Log.d(TAG,"MainActivity: checkCreateRenameFolder global_id: "+globalFolderData.getInt("id")
+                            +", title: "+globalFolderData.getString("name"));
+
+                        dbh.checkCreateRenameFolder(globalFolderData);
+
+                        //TODO: Restart Activity when done all synchronization
+                    }
+
+                    JSONArray global_idsArr = obj.getJSONArray("global_ids");
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                Log.d(TAG,"MainActivity: PreSyncArticles");
+
+                syncArticles();
+                //Вторая часть
+                //TODO: Если global_ids == local_ids, и они совпадают, то только сравнить названия
+                //TODO: Если global_ids == local_ids, и они различаются, то сравниваем попарно(ВОЗМОЖНО НЕ БЫВАЕТ)
+                    //TODO: Есть на локальном, но нет на сервере(ТАК НЕ БЫВАЕТ)
+                    //TODO: Есть на сервере нет на локальном(ВОЗМОЖНО НЕ БЫВАЕТ) добавляем папку на локальный
+
+                //TODO: Если global_ids > local_ids, сравниваем попарно, добавляем с сервера
+
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+                //TODO: Необходимо добавить это блок во все запросы(Наверное)
+                if(error.networkResponse.statusCode==401 && error.toString().equals("com.android.volley.AuthFailureError")){
+                    Log.d(TAG,"MainActivity: need to refresh token");
+                    //TODO: Возможно нужно сделать так что бы функция вызывалась при успешном окончании refreshToken(что то, типа Invoke(Unity))
+                    refreshToken();
+                    syncFolders();
+
+                }
+
+                Log.e(TAG,"Error: syncFolders "+error.getMessage());
+
+                NetworkResponse networkResponse = error.networkResponse;
+                if (networkResponse != null && networkResponse.data != null) {
+                    String jsonError = new String(networkResponse.data);
+                    // Print Error!
+                    Log.d(TAG,"MainActivity: syncFolders networkResponseError "+jsonError);
+                }else{
+                    Log.d(TAG,"MainActivity: syncFolders no networkResponse");
+                }
+            }
+        }){
+
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<>();
+                String token = "Bearer "+session.getAuthToken();
+                headers.put("Authorization",token);
+                return headers;
+            }
+
+            @Override
+            protected Map<String,String> getParams(){
+                Map<String,String> params = new HashMap<>();
+                params.put("request", foldersListStr);
+                params.put("type","android");
+
+                return params;
+            }
+
+        };
+        strReq.setRetryPolicy(new DefaultRetryPolicy(
+                (int) TimeUnit.SECONDS.toMillis(20),
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+        ));
+
+        AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
+    }
+
+    //TODO: TMP folderSyncRequestBack
+    private void folderSyncRequestBack(){
+        final String foldersListStr = dbh.composeJSONFromFolders();
+
+        String tag_string_req = "req_sync_folders";
+
+        StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_FOLDER_REQUEST_BACK, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "MainActivity: folder request back " + response);
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+                Log.d(TAG,"Error: syncFolders "+error.getMessage());
+
+                NetworkResponse networkResponse = error.networkResponse;
+                if (networkResponse != null && networkResponse.data != null) {
+                    String jsonError = new String(networkResponse.data);
+                    // Print Error!
+                    Log.d(TAG,"MainActivity: networkResponsError "+jsonError);
+                }
+
+            }
+        }){
+
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<>();
+                String token = "Bearer "+session.getAuthToken();
+                headers.put("Authorization",token);
+                return headers;
+            }
+
+            @Override
+            protected Map<String,String> getParams(){
+                Map<String,String> params = new HashMap<>();
+                params.put("request", foldersListStr);
+                params.put("type","android");
+                return params;
+            }
+
+        };
+
+        AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
+    }
+
+    //TODO: TMP articleSyncRequestBack
+    private void articleSyncRequestBack(){
+        final String articlesListStr = dbh.composeJSONFromArticles();
+
+        String tag_string_req = "req_sync_article";
+
+        StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_ARTICLE_REQUEST_BACK, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "MainActivity: article request back " + response);
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+                Log.d(TAG,"Error: articleRequestBack "+error.getMessage());
+
+                NetworkResponse networkResponse = error.networkResponse;
+                if (networkResponse != null && networkResponse.data != null) {
+                    String jsonError = new String(networkResponse.data);
+                    // Print Error!
+                    Log.d(TAG,"MainActivity: networkResponsError "+jsonError);
+                }
+
+            }
+        }){
+
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<>();
+                String token = "Bearer "+session.getAuthToken();
+                headers.put("Authorization",token);
+                return headers;
+            }
+
+            @Override
+            protected Map<String,String> getParams(){
+                Map<String,String> params = new HashMap<>();
+                params.put("request",articlesListStr);
+                params.put("type","android");
+
+                return params;
+            }
+
+        };
+
+        AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
     }
 
     private void syncArticles(){
+        //final String foldersListStr = dbh.composeJSONFromFolders();
+        final String articlesListStr = dbh.composeJSONFromArticles();
 
+        String tag_string_req = "req_articles_sync";
+
+        StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_SEND_ARTICLES, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "MainActivity: syncArticles response: " + response);
+
+                JSONObject obj = null;
+
+                try{
+                    obj = new JSONObject(response);
+
+                    JSONArray serverCreated = obj.getJSONArray("serverCreated");
+
+                    JSONArray insertedArticlesArr = obj.getJSONArray("insertedArticles");
+
+                    for(int i = 0;i<insertedArticlesArr.length();i++){
+                        JSONObject insertedToServerObj = insertedArticlesArr.getJSONObject(i);
+
+                        int local_id = insertedToServerObj.getInt("local_id");
+                        int global_id = insertedToServerObj.getInt("global_id");
+
+                        dbh.setGlobalIdToArticle(local_id,global_id);
+                    }
+
+                    for(int i = 0;i<serverCreated.length();i++){
+                        JSONObject newArticleObj = serverCreated.getJSONObject(i);
+                        dbh.addGlobalArticle(newArticleObj);
+                    }
+
+                }catch(JSONException e){
+                    e.printStackTrace();
+                }
+
+                Intent intent = new Intent(MainActivity.this,MainActivity.class);
+
+                intent.putExtra("restart",true);
+                finish();
+                startActivity(intent);
+
+                //TODO: Если изменения в нашей статье(изменения в полях title,authors), то появляется окно сравнения и мы выбираем какую версию оставить
+                //TODO: Если в одной версии пустое поле, а вдругой нет, то пустое поле заполняется записью
+                //TODO: Если изменения в нашей статье(изменения в полях issue,pages), то выставляются последние(updated_at) данные
+
+                //Папки
+                //TODO: При сравнении папок(в какой папке лежит), выставляется последнее(updated_at) изменение
+                //TODO: Если ссылается на удаленную папку, то переносится в корень
+
+
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG,"Error: syncArticles "+error.getMessage());
+
+                NetworkResponse networkResponse = error.networkResponse;
+                if(networkResponse != null && networkResponse.data != null){
+                    String jsonError = new String(networkResponse.data);
+                    Log.d(TAG,"MainActivity: syncArticles networkResponseError "+jsonError);
+                }else{
+                    Log.d(TAG,"MainActivity: syncFolders no networkResponse");
+                }
+            }
+        }){
+
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<>();
+                String token = "Bearer "+session.getAuthToken();
+                headers.put("Authorization",token);
+                return headers;
+            }
+
+            @Override
+            protected Map<String,String> getParams(){
+                Map<String,String> params = new HashMap<>();
+                params.put("request",articlesListStr);
+                params.put("type","android");
+
+                return params;
+            }
+
+        };
+
+        strReq.setRetryPolicy(new DefaultRetryPolicy(
+                (int) TimeUnit.SECONDS.toMillis(20),
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+        ));
+
+        AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
     }
 
     private void setToolbarTilte(String title){

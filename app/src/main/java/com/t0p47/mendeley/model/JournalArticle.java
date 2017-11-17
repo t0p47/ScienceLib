@@ -22,11 +22,12 @@ public class JournalArticle {
     int folder;
     String filepath;
     String created_at;
+    String updated_at;
     int favorite;
 
     public JournalArticle() {}
 
-    public JournalArticle(int local_id, int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, int favorite) {
+    public JournalArticle(int local_id, int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, String updated_at, int favorite) {
         this.local_id = local_id;
         this.global_id = global_id;
         this.title = title;
@@ -43,6 +44,7 @@ public class JournalArticle {
         this.folder = folder;
         this.filepath = filepath;
         this.created_at = created_at;
+        this.updated_at = updated_at;
         this.favorite = favorite;
     }
 
@@ -63,7 +65,7 @@ public class JournalArticle {
     // "updated_at":"2017-09-28 06:57:34","delete_date":"0000-00-00 00:00:00","favorite":1}
 
 
-    public JournalArticle(int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, int favorite) {
+    public JournalArticle(int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, String updated_at, int favorite) {
         this.global_id = global_id;
         this.title = title;
         this.authors = authors;
@@ -79,6 +81,7 @@ public class JournalArticle {
         this.folder = folder;
         this.filepath = filepath;
         this.created_at = created_at;
+        this.updated_at = updated_at;
         this.favorite = favorite;
     }
 
@@ -223,6 +226,14 @@ public class JournalArticle {
 
     public void setCreated_at(String created_at) {
         this.created_at = created_at;
+    }
+
+    public String getUpdated_at() {
+        return updated_at;
+    }
+
+    public void setUpdated_at(String updated_at) {
+        this.updated_at = updated_at;
     }
 
     public int getFavorite() {

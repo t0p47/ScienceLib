@@ -14,18 +14,23 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.StringRequest;
 import com.t0p47.mendeley.R;
 import com.t0p47.mendeley.app.AppConfig;
 import com.t0p47.mendeley.app.AppController;
 import com.t0p47.mendeley.db.DatabaseHandler;
 import com.t0p47.mendeley.helper.SessionManager;
+import com.t0p47.mendeley.interfaces.ResponseDataCallback;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -60,11 +65,23 @@ public class LoginActivity extends AppCompatActivity {
         //Check if user already logged in or not
         if(session.isLoggedIn()){
 
-            Log.d(TAG,"LoginActivity: starting token refresh");
-            refreshToken();
-            Intent intent = new Intent(LoginActivity.this,MainActivity.class);
-            startActivity(intent);
-            finish();
+            //Log.d(TAG,"LoginActivity: starting token refresh");
+            refreshToken(new ResponseDataCallback() {
+                @Override
+                public void onSuccessString(String response) {
+                    //Log.d(TAG,"LoginActivity: token refresh maybe sync "+response);
+                    if(!response.isEmpty()){
+                        //Log.d(TAG,"LoginActivity: response is NOT empty");
+                        Intent intent = new Intent(LoginActivity.this,MainActivity.class);
+                        startActivity(intent);
+                        finish();
+                    }else{
+                        Log.d(TAG,"LoginActivity: response is empty");
+                    }
+                }
+            });
+
+
         }else{
             Toast.makeText(this, "Need to login",Toast.LENGTH_SHORT).show();
         }
@@ -103,7 +120,7 @@ public class LoginActivity extends AppCompatActivity {
         StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_LOGIN_USER, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.d(TAG, "LoginActivity: response: " + response.toString());
+                //Log.d(TAG, "LoginActivity: response: " + response.toString());
                 hideDialog();
 
                 //TODO: Распарсить ответ
@@ -155,22 +172,24 @@ public class LoginActivity extends AppCompatActivity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
-    private void refreshToken(){
+    private void refreshToken(final ResponseDataCallback callback){
+
         String tag_string_req = "req_token_refresh";
 
         StringRequest strReq = new StringRequest(Request.Method.GET, AppConfig.URL_REFRESH_TOKEN, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.d(TAG, "LoginActivity: refreshToken response " + response);
+                //Log.d(TAG, "LoginActivity: refreshToken response " + response);
 
                 try {
                     JSONObject jObj = new JSONObject(response);
 
                     String token = jObj.getString("token");
 
-                    Log.d(TAG,"LoginActivity: refreshed token: "+token);
+                    //Log.d(TAG,"LoginActivity: refreshed token: "+token);
 
                     session.setAuthToken(token);
+                    callback.onSuccessString(response);
                 } catch (JSONException e) {
                     e.printStackTrace();
                     Toast.makeText(getApplicationContext(), "JSON error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -187,7 +206,7 @@ public class LoginActivity extends AppCompatActivity {
             public Map<String,String> getHeaders() throws AuthFailureError{
                 HashMap<String,String> headers = new HashMap<String,String>();
                 String token = "Bearer "+session.getAuthToken();
-                Log.d(TAG,"LoginActivity: token to refresh(expired): "+token);
+                //Log.d(TAG,"LoginActivity: token to refresh(expired): "+token);
                 headers.put("Authorization",token);
                 return headers;
             }

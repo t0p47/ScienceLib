@@ -35,7 +35,7 @@ public class SessionManager {
         editor.putString(KEY_AUTH_TOKEN, authToken);
 
         editor.commit();
-        Log.d(TAG,"SessionManager: token changed");
+        //Log.d(TAG,"SessionManager: token changed");
     }
 
     public String getAuthToken(){
