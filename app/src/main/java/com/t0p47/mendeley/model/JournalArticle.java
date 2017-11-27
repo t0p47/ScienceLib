@@ -20,14 +20,14 @@ public class JournalArticle {
     int DOI;
     int PMID;
     int folder;
-    String filepath;
+    String filePath;
     String created_at;
     String updated_at;
     int favorite;
 
     public JournalArticle() {}
 
-    public JournalArticle(int local_id, int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, String updated_at, int favorite) {
+    public JournalArticle(int local_id, int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filePath, String created_at, String updated_at, int favorite) {
         this.local_id = local_id;
         this.global_id = global_id;
         this.title = title;
@@ -42,30 +42,49 @@ public class JournalArticle {
         this.DOI = DOI;
         this.PMID = PMID;
         this.folder = folder;
-        this.filepath = filepath;
+        this.filePath = filePath;
         this.created_at = created_at;
         this.updated_at = updated_at;
         this.favorite = favorite;
     }
 
 
-    public JournalArticle(int local_id, String title, String authors, String journal, String created_at, int favorite, String filepath) {
+    public JournalArticle(int local_id, String title, String authors, String journal, String created_at, int favorite, String filePath) {
         this.local_id = local_id;
         this.title = title;
         this.authors = authors;
         this.journal = journal;
-        this.filepath = filepath;
+        this.filePath = filePath;
         this.created_at = created_at;
         this.favorite = favorite;
     }
 
+    public JournalArticle(int local_id, String title, String authors, String abstractField, String journal, int volume,
+                          int issue, int pages, int year, int ArXivID, int DOI, int PMID, String created_at, int favorite, String filePath) {
+        this.local_id = local_id;
+        this.title = title;
+        this.authors = authors;
+        this.journal = journal;
+        this.abstractField = abstractField;
+        this.filePath = filePath;
+        this.created_at = created_at;
+        this.favorite = favorite;
+        this.volume = volume;
+        this.issue = issue;
+        this.year = year;
+        this.pages = pages;
+        this.ArXivID = ArXivID;
+        this.DOI = DOI;
+        this.PMID = PMID;
+    }
+
     //response [{"id":109,"title":"ForTask2","authors":"Alex","abstract":null,"journal_id":"01","volume":null,
     // "issue":null,"year":null,"pages":null,"ArXivID":null,"DOI":null,"PMID":null,"folder":2,
-    // "filepath":null,"1":0,"uid":19,"created_at":"2017-09-28 06:57:34",
+    // "filePath":null,"1":0,"uid":19,"created_at":"2017-09-28 06:57:34",
     // "updated_at":"2017-09-28 06:57:34","delete_date":"0000-00-00 00:00:00","favorite":1}
 
 
-    public JournalArticle(int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filepath, String created_at, String updated_at, int favorite) {
+    public JournalArticle(int global_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, int folder, String filePath, String created_at, String updated_at, int favorite) {
         this.global_id = global_id;
         this.title = title;
         this.authors = authors;
@@ -79,14 +98,14 @@ public class JournalArticle {
         this.DOI = DOI;
         this.PMID = PMID;
         this.folder = folder;
-        this.filepath = filepath;
+        this.filePath = filePath;
         this.created_at = created_at;
         this.updated_at = updated_at;
         this.favorite = favorite;
     }
 
     //For local create
-    public JournalArticle(String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID) {
+    public JournalArticle(String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, String filePath) {
         this.title = title;
         this.authors = authors;
         this.abstractField = abstractField;
@@ -98,6 +117,7 @@ public class JournalArticle {
         ArXivID = arXivID;
         this.DOI = DOI;
         this.PMID = PMID;
+        this.filePath = filePath;
     }
 
     public int getLocal_id() {
@@ -212,12 +232,12 @@ public class JournalArticle {
         this.folder = folder;
     }
 
-    public String getFilepath() {
-        return filepath;
+    public String getFilePath() {
+        return filePath;
     }
 
-    public void setFilepath(String filepath) {
-        this.filepath = filepath;
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
     }
 
     public String getCreated_at() {

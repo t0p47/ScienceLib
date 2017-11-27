@@ -244,9 +244,12 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         String formattedDate = dateFormat.format(date);
         Log.d(TAG,"MainActivity: current date: "+formattedDate);
         article.setCreated_at(formattedDate);
+
+        int newArticleId = (int) dbh.addLocalArtilcle(article);
+        article.setLocal_id(newArticleId);
         articlesList.add(article);
         mAdapter.notifyDataSetChanged();
-        dbh.addLocalArtilcle(article);
+
     }
 
     private void showNewFolderDialog() {

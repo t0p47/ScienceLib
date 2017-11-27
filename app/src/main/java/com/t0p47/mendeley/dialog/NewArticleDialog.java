@@ -100,7 +100,9 @@ public class NewArticleDialog extends DialogFragment {
                         PMID = Integer.parseInt(etPMID.getText().toString());
                     }
 
-                    JournalArticle article = new JournalArticle(title,authors,abstractField,journal,volume,issue,year,pages,ArXivID,DOI,PMID);
+                    String filePath = null;
+
+                    JournalArticle article = new JournalArticle(title,authors,abstractField,journal,volume,issue,year,pages,ArXivID,DOI,PMID, filePath);
                     activity.onFinishNewArticleDialog(article);
 
 

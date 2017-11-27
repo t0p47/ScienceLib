@@ -13,7 +13,6 @@ import com.t0p47.mendeley.app.AppConfig;
 import com.t0p47.mendeley.model.Folder;
 import com.t0p47.mendeley.model.JournalArticle;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -125,7 +124,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String selectQuery = "SELECT "+KEY_LOCAL_ID+","+KEY_GLOBAL_ID+","+KEY_FOLDER_TITLE+","+KEY_FOLDER_PARENT_ID+" FROM "+TABLE_FOLDERS;
+        String selectQuery = "SELECT "+KEY_LOCAL_ID+","+KEY_GLOBAL_ID+","+KEY_FOLDER_TITLE+","+KEY_FOLDER_PARENT_ID+" FROM "+TABLE_FOLDERS+" WHERE "+KEY_IS_DELETE+"=0";
 
         Cursor cursor = db.rawQuery(selectQuery,null);
 
@@ -184,7 +183,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
             values.put(KEY_ARTICLE_UPDATED_AT, article.getUpdated_at());
             values.put(KEY_ARTICLE_FAVORITE,article.getFavorite());
             values.put(KEY_ARTICLE_FOLDER, article.getFolder());
-            values.put(KEY_ARTICLE_FILEPATH, article.getFilepath());
+            values.put(KEY_ARTICLE_FILEPATH, article.getFilePath());
 
             db.insert(TABLE_ARTICLES,null,values);
             Log.d(TAG,"DatabaseHandler: article inserted. Title: "+article.getTitle());
@@ -722,7 +721,9 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
 
         String SELECT_Query = "SELECT "+KEY_LOCAL_ID+","+KEY_ARTICLE_TITLE+","+KEY_ARTICLE_AUTHORS+","+KEY_ARTICLE_JOURNAL_ID
-                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+" FROM "+TABLE_ARTICLES+" WHERE "+KEY_ARTICLE_FOLDER+"="+0;
+                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+","+KEY_ARTICLE_VOLUME+","
+                +KEY_ARTICLE_ISSUE+","+KEY_ARTICLE_PAGES+","+KEY_ARTICLE_YEAR+","+KEY_ARTICLE_ARXIVID+","
+                +KEY_ARTICLE_DOI+","+KEY_ARTICLE_PMID+","+KEY_ARTICLE_ABSTRACT+" FROM "+TABLE_ARTICLES+" WHERE "+KEY_ARTICLE_FOLDER+"="+0;
 
         Cursor cursor = db.rawQuery(SELECT_Query,null);
         if(cursor.moveToFirst()){
@@ -735,7 +736,16 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 int favorite = cursor.getInt(5);
                 String filepath = cursor.getString(6);
 
-                JournalArticle article = new JournalArticle(local_id,title,author,journal,created_at,favorite,filepath);
+                int volume = cursor.getInt(7);
+                int issue = cursor.getInt(8);
+                int pages = cursor.getInt(9);
+                int year = cursor.getInt(10);
+                int ArXivID = cursor.getInt(11);
+                int DOI = cursor.getInt(12);
+                int PMID = cursor.getInt(13);
+                String abstractField = cursor.getString(14);
+
+                JournalArticle article = new JournalArticle(local_id,title,author,abstractField,journal,volume,issue,pages,year,ArXivID,DOI,PMID,created_at,favorite,filepath);
                 articlesList.add(article);
             }while (cursor.moveToNext());
         }
@@ -750,7 +760,9 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
 
         String SELECT_Query = "SELECT "+KEY_LOCAL_ID+","+KEY_ARTICLE_TITLE+","+KEY_ARTICLE_AUTHORS+","+KEY_ARTICLE_JOURNAL_ID
-                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+" FROM "+TABLE_ARTICLES+" WHERE "+KEY_ARTICLE_FOLDER+"="+folder_local_id;
+                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+","+KEY_ARTICLE_VOLUME+","
+                +KEY_ARTICLE_ISSUE+","+KEY_ARTICLE_PAGES+","+KEY_ARTICLE_YEAR+","+KEY_ARTICLE_ARXIVID+","
+                +KEY_ARTICLE_DOI+","+KEY_ARTICLE_PMID+","+KEY_ARTICLE_ABSTRACT+" FROM "+TABLE_ARTICLES+" WHERE "+KEY_ARTICLE_FOLDER+"="+folder_local_id;
 
         Cursor cursor = db.rawQuery(SELECT_Query,null);
         if(cursor.moveToFirst()){
@@ -762,14 +774,64 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 String created_at = cursor.getString(4);
                 int favorite = cursor.getInt(5);
                 String filepath = cursor.getString(6);
+                int volume = cursor.getInt(7);
+                int issue = cursor.getInt(8);
+                int pages = cursor.getInt(9);
+                int year = cursor.getInt(10);
+                int ArXivID = cursor.getInt(11);
+                int DOI = cursor.getInt(12);
+                int PMID = cursor.getInt(13);
+                String abstractField = cursor.getString(14);
 
-                JournalArticle article = new JournalArticle(local_id,title,author,journal,created_at,favorite,filepath);
+                JournalArticle article = new JournalArticle(local_id,title,author,abstractField,journal,volume,issue,pages,year,ArXivID,DOI,PMID,created_at,favorite,filepath);
                 articlesList.add(article);
             }while (cursor.moveToNext());
         }
         cursor.close();
 
         return articlesList;
+
+    }
+
+    public List<JournalArticle> getAllArticles(){
+
+        List<JournalArticle> articleList = new ArrayList();
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String selectQuery = "SELECT "+KEY_LOCAL_ID+","+KEY_ARTICLE_TITLE+","+KEY_ARTICLE_AUTHORS+","+KEY_ARTICLE_JOURNAL_ID
+                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+" FROM "+TABLE_ARTICLES;
+
+        Cursor cursor = db.rawQuery(selectQuery,null);
+
+        if(cursor.moveToFirst()){
+            do{
+                int local_id = cursor.getInt(0);
+                String title = cursor.getString(1);
+                String author = cursor.getString(2);
+                String journal = cursor.getString(3);
+                String created_at = cursor.getString(4);
+                int favorite = cursor.getInt(5);
+                String filepath = cursor.getString(6);
+
+                JournalArticle article = new JournalArticle(local_id,title,author,journal,created_at,favorite,filepath);
+                articleList.add(article);
+            }while(cursor.moveToNext());
+        }
+
+        cursor.close();
+
+        return articleList;
+    }
+
+    public void setFavorite(int local_id, int favorite){
+
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(KEY_ARTICLE_FAVORITE,favorite);
+
+        db.update(TABLE_ARTICLES,values,KEY_LOCAL_ID+" = ?",new String[]{String.valueOf(local_id)});
 
     }
 
@@ -802,14 +864,14 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     map.put(KEY_IS_CHANGE, cursor.getString(cursor.getColumnIndex(KEY_IS_CHANGE)));
                     map.put(KEY_IS_DELETE, cursor.getString(cursor.getColumnIndex(KEY_IS_DELETE)));
                     map.put("name",cursor.getString(cursor.getColumnIndex(KEY_FOLDER_TITLE)));
-                    map.put("local_id",cursor.getString(cursor.getColumnIndex(KEY_LOCAL_ID)));
-                    map.put("global_id",cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
-                    map.put("parent_id",cursor.getString(cursor.getColumnIndex(KEY_FOLDER_PARENT_ID)));
+                    map.put(KEY_LOCAL_ID,cursor.getString(cursor.getColumnIndex(KEY_LOCAL_ID)));
+                    map.put(KEY_GLOBAL_ID,cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
+                    map.put(KEY_FOLDER_PARENT_ID,cursor.getString(cursor.getColumnIndex(KEY_FOLDER_PARENT_ID)));
                     foldersList.add(map);
                 }else{
-                    map.put("local_id",cursor.getString(cursor.getColumnIndex(KEY_LOCAL_ID)));
-                    map.put("global_id",cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
-                    map.put("parent_id",cursor.getString(cursor.getColumnIndex(KEY_FOLDER_PARENT_ID)));
+                    map.put(KEY_LOCAL_ID,cursor.getString(cursor.getColumnIndex(KEY_LOCAL_ID)));
+                    map.put(KEY_GLOBAL_ID,cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
+                    map.put(KEY_FOLDER_PARENT_ID,cursor.getString(cursor.getColumnIndex(KEY_FOLDER_PARENT_ID)));
                     foldersList.add(map);
                 }
 
