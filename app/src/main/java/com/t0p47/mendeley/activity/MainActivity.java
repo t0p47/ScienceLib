@@ -802,15 +802,6 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
                     JSONArray globalIdNamesArr = obj.getJSONArray("global_ids");
                     JSONArray local_dataArr = obj.getJSONArray("local_data");
-                    JSONArray needToDeleteArr = obj.getJSONArray("needToDelete");
-
-                    for(int i =0;i<needToDeleteArr.length();i++){
-
-                        JSONObject needToDeleteObj = needToDeleteArr.getJSONObject(i);
-                        int global_id = needToDeleteObj.getInt("global_id");
-
-                        dbh.deleteGlobalArticle(global_id);
-                    }
 
                     for(int i = 0;i<local_dataArr.length();i++){
 
@@ -856,8 +847,6 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
                         //TODO: Restart Activity when done all synchronization
                     }
-
-                    JSONArray global_idsArr = obj.getJSONArray("global_ids");
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
