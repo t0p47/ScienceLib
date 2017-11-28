@@ -898,8 +898,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 HashMap<String,String> map = new HashMap<>();
                 //Созданные локально(не синхронизированные)
                 if(cursor.getInt(cursor.getColumnIndex(KEY_IS_NEW))==1){
-                    map.put(KEY_LOCAL_ID,cursor.getString(cursor.getColumnIndex(KEY_LOCAL_ID)));
                     int global_folder_parent_id = getFolderGlobalIdByLocal(cursor.getInt(cursor.getColumnIndex(KEY_ARTICLE_FOLDER)));
+                    map.put(KEY_LOCAL_ID,cursor.getString(cursor.getColumnIndex(KEY_LOCAL_ID)));
                     map.put(KEY_ARTICLE_TITLE,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_TITLE)));
                     map.put(KEY_ARTICLE_AUTHORS,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_AUTHORS)));
                     map.put(KEY_ARTICLE_ABSTRACT,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_ABSTRACT)));

@@ -808,7 +808,15 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                         JSONObject localFolderObj = local_dataArr.getJSONObject(i);
                         int global_id = localFolderObj.getInt("global_id");
                         int local_id = localFolderObj.getInt("local_id");
-                        int is_delete = localFolderObj.getInt("is_delete");
+
+                        if(localFolderObj.has("is_delete")){
+                            int is_delete = localFolderObj.getInt("is_delete");
+                            //TODO: Если is_delete вернувшейся папки равно единице, то удаляем её
+                            if(is_delete==1){
+                                dbh.deleteGlobalFolder(local_id);
+                            }
+                        }
+
 
 
                         dbh.disableIsNewFolder();
@@ -825,17 +833,14 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                             continue;
                         }
 
-                        //TODO: Если is_delete вернувшейся папки равно единице, то удаляем её
-                        if(is_delete==1){
-                            dbh.deleteGlobalFolder(local_id);
-                        }
+
                     }
 
                     //Вторая часть
 
                     for(int i = 0;i<globalIdNamesArr.length();i++){
 
-
+                        Log.d(TAG,"MainActivity: checkCreateRenameFolder");
 
                         JSONObject globalFolderData = globalIdNamesArr.getJSONObject(i);
                         //int global_id = globalFolderData.getInt("id");
