@@ -238,6 +238,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
         ContentValues values = new ContentValues();
         values.put(KEY_FOLDER_TITLE,folderTitle);
+        values.put(KEY_IS_CHANGE,1);
 
         db.update(TABLE_FOLDERS, values, KEY_LOCAL_ID+" = ?",new String[] {String.valueOf(local_id)});
 
@@ -610,7 +611,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 folder = articleObj.getInt("folder");
             }
 
-            //TODO:Поле favorite у JournalArticle
+            //TODO:Поле favorite у JournalArticle(Добавить favorite в ответ сервера)
             /*favorite = 0;
             if(!articleObj.get("favorite").equals(null)){
                 favorite = articleObj.getInt("favorite");
@@ -638,6 +639,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         values.put(KEY_ARTICLE_ARXIVID,ArXivID);
         values.put(KEY_ARTICLE_DOI,DOI);
         values.put(KEY_ARTICLE_PMID,PMID);
+        //values.put(KEY_ARTICLE_FAVORITE,favorite);
         values.put(KEY_ARTICLE_FOLDER,folder);
         values.put(KEY_ARTICLE_CREATED_AT, created_at);
         values.put(KEY_ARTICLE_UPDATED_AT, updated_at);
