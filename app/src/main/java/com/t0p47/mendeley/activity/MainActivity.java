@@ -128,8 +128,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         //syncFolders();
 
-        getFolders();
-        getArticles();
+
 
 
         mHandler = new Handler();
@@ -167,6 +166,9 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         }));
 
         recyclerView.setAdapter(mAdapter);
+
+        getFolders();
+        getArticles();
 
         FabOpen = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fab_open);
         FabClose = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fab_close);
@@ -286,7 +288,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         String currentLongFolderTitle = ((TextView)foldersTreeIds.get(changingFolderId)
                 .getViewHolder().getView().findViewById(R.id.node_value)).getText().toString();
-        changingFolderId = 0;
+        //changingFolderId = 0;
 
         showRenameFolderDialog(currentLongFolderTitle);
     }
@@ -326,7 +328,11 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private void renameFolder(String folderTitle){
         dbh.changeFolderTitle(changingFolderId, folderTitle);
         TreeNode changingNode = foldersTreeIds.get(changingFolderId);
+
+        Log.d(TAG,"MainActivity: changingNode: "+changingNode+", changingFolderId: "+String.valueOf(changingFolderId));
+
         changingFolderId=0;
+
         TextView nameView = (TextView) changingNode.getViewHolder().getView().findViewById(R.id.node_value);
         nameView.setText(folderTitle);
     }
@@ -398,7 +404,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             Log.d(TAG,"MainActivity: first time articles");
             //TODO: Elseif если в настройках стоит галочка синхронизировать при запуске
         }else{
-            //loadArticles();
+            Log.d(TAG,"MainActivity: showNewDBArticles");
+            showArticles();
         }
     }
 
@@ -1050,9 +1057,20 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                 try{
                     obj = new JSONObject(response);
 
-                    JSONArray serverCreated = obj.getJSONArray("serverCreated");
-
+                    JSONArray serverCreatedArr = obj.getJSONArray("serverCreated");
                     JSONArray insertedArticlesArr = obj.getJSONArray("insertedArticles");
+                    JSONArray needToSyncArr = obj.getJSONArray("needToSync");
+                    JSONArray needToDeleteArr = obj.getJSONArray("needToDelete");
+
+                    for(int i = 0;i<needToDeleteArr.length();i++){
+
+                        JSONObject needToDeleteObj = needToDeleteArr.getJSONObject(i);
+
+                        Log.d(TAG,"MainActivity: needToDelete: "+needToDeleteObj);
+
+                        dbh.deleteGlobalArticle(needToDeleteObj.getInt("global_id"));
+
+                    }
 
                     for(int i = 0;i<insertedArticlesArr.length();i++){
                         JSONObject insertedToServerObj = insertedArticlesArr.getJSONObject(i);
@@ -1063,8 +1081,8 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                         dbh.setGlobalIdToArticle(local_id,global_id);
                     }
 
-                    for(int i = 0;i<serverCreated.length();i++){
-                        JSONObject newArticleObj = serverCreated.getJSONObject(i);
+                    for(int i = 0;i<serverCreatedArr.length();i++){
+                        JSONObject newArticleObj = serverCreatedArr.getJSONObject(i);
                         dbh.addGlobalArticle(newArticleObj);
                     }
 
