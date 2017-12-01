@@ -417,7 +417,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private void getFirstTimeFolders(){
         String tag_string_req = "req_folders";
 
-        StringRequest strReq = new StringRequest(Request.Method.GET, AppConfig.URL_SYNC_FOLDERS, new Response.Listener<String>() {
+        StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_SYNC_FOLDERS, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
                 Log.d(TAG, "MainActivity: response " + response);
@@ -473,6 +473,13 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                 headers.put("Authorization",token);
                 return headers;
             }
+
+            @Override
+            protected Map<String,String>getParams(){
+                Map<String,String> params = new HashMap<>();
+                params.put("type","android");
+                return params;
+            }
         };
 
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
@@ -484,7 +491,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         pDialog.setMessage("Synching articles...");
         showDialog();
 
-        StringRequest strReq = new StringRequest(Request.Method.GET, AppConfig.URL_SYNC_ARTICLES, new Response.Listener<String>() {
+        StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_SYNC_ARTICLES, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
                 Log.d(TAG, "MainActivity: response " + response);
@@ -587,6 +594,13 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                 String token = "Bearer "+session.getAuthToken();
                 headers.put("Authorization",token);
                 return headers;
+            }
+
+            @Override
+            protected Map<String,String> getParams(){
+                Map<String,String> params = new HashMap<>();
+                params.put("type","android");
+                return params;
             }
 
         };

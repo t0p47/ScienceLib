@@ -702,6 +702,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
 
         values.put(KEY_GLOBAL_ID, global_id);
+        values.put(KEY_IS_NEW,0);
 
         db.update(TABLE_ARTICLES, values, KEY_LOCAL_ID+" = ?", new String[] {String.valueOf(local_id)});
 
