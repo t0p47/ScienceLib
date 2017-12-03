@@ -5,7 +5,7 @@ android {
     buildToolsVersion "26.0.2"
 
     defaultConfig {
-        applicationId "com.t0p47.mendeley"
+        applicationId "com.t0p47.sciencelib"
         minSdkVersion 15
         targetSdkVersion 26
         versionCode 1
