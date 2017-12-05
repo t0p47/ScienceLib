@@ -104,6 +104,25 @@ public class JournalArticle {
         this.favorite = favorite;
     }
 
+    //new JournalArticle(receivedArticle.getLocal_id(), title,authors,abstractField,journal,volume,issue,year,pages,ArXivID,DOI,PMID, filePath);
+    public JournalArticle(int local_id, String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, String filePath){
+
+        this.local_id = local_id;
+        this.title = title;
+        this.authors = authors;
+        this.abstractField = abstractField;
+        this.journal = journal;
+        this.volume = volume;
+        this.issue = issue;
+        this.year = year;
+        this.pages = pages;
+        ArXivID = arXivID;
+        this.DOI = DOI;
+        this.PMID = PMID;
+        this.filePath = filePath;
+
+    }
+
     //For local create
     public JournalArticle(String title, String authors, String abstractField, String journal, int volume, int issue, int year, int pages, int arXivID, int DOI, int PMID, String filePath) {
         this.title = title;

@@ -480,5 +480,6 @@
 
 
     <!-- FontAwesome icons -->
-    <string name="fa_icon_star">&#xf005;</string>
+    <string name="fa_icon_star_full">&#xf005;</string>
+    <string name="fa_icon_star_empty">&#xf006;</string>
 </resources>

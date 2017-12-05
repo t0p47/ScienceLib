@@ -3,6 +3,8 @@ package com.t0p47.sciencelib.db;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.MatrixCursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
@@ -16,7 +18,9 @@ import com.t0p47.sciencelib.model.JournalArticle;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -165,7 +169,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
             values = new ContentValues();
 
             //Меняем глобальные id папок на локальные
-            article.setFolder(getFolderGlobalIdByLocal(article.getFolder()));
+            article.setFolder(getFolderLocalIdByGlobal(article.getFolder()));
 
             values.put(KEY_GLOBAL_ID, article.getGlobal_id());
             values.put(KEY_ARTICLE_TITLE, article.getTitle());
@@ -489,8 +493,6 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
     }
 
-
-
     private void addGlobalFolder(int global_id, String folderName, int globalParentId){
 
         SQLiteDatabase db = this.getWritableDatabase();
@@ -617,6 +619,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 favorite = articleObj.getInt("favorite");
             }*/
 
+            articleObj.getInt("favorite");
+
             folder = getFolderLocalIdByGlobal(articleObj.getInt("folder"));
             created_at = articleObj.getString("created_at");
             updated_at = articleObj.getString("updated_at");
@@ -639,12 +643,134 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         values.put(KEY_ARTICLE_ARXIVID,ArXivID);
         values.put(KEY_ARTICLE_DOI,DOI);
         values.put(KEY_ARTICLE_PMID,PMID);
-        //values.put(KEY_ARTICLE_FAVORITE,favorite);
+        values.put(KEY_ARTICLE_FAVORITE,favorite);
         values.put(KEY_ARTICLE_FOLDER,folder);
         values.put(KEY_ARTICLE_CREATED_AT, created_at);
         values.put(KEY_ARTICLE_UPDATED_AT, updated_at);
 
         db.insert(TABLE_ARTICLES,null,values);
+
+    }
+
+    public void updateArticle(JournalArticle article){
+
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(KEY_ARTICLE_TITLE,article.getTitle());
+        values.put(KEY_ARTICLE_AUTHORS, article.getAuthors());
+        values.put(KEY_ARTICLE_ABSTRACT, article.getAbstractField());
+        values.put(KEY_ARTICLE_JOURNAL_ID, article.getJournal());
+        values.put(KEY_ARTICLE_VOLUME, article.getVolume());
+        values.put(KEY_ARTICLE_ISSUE, article.getIssue());
+        values.put(KEY_ARTICLE_YEAR, article.getYear());
+        values.put(KEY_ARTICLE_PAGES,article.getPages());
+        values.put(KEY_ARTICLE_ARXIVID,article.getArXivID());
+        values.put(KEY_ARTICLE_DOI, article.getDOI());
+        values.put(KEY_ARTICLE_PMID, article.getPMID());
+        values.put(KEY_ARTICLE_UPDATED_AT, article.getUpdated_at());
+        values.put(KEY_ARTICLE_FOLDER, article.getFolder());
+
+
+        db.update(TABLE_ARTICLES,values, KEY_LOCAL_ID+" = ?",
+                new String[]{String.valueOf(article.getLocal_id())});
+
+    }
+
+    public void updateLocalArticleByServer(JSONObject needToSyncObj){
+
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        int global_id = 0;
+        String title = null;
+        String authors = null;
+        String abstractStr = null;
+        String journal_id = null;
+        int volume = 0;
+        int issue = 0;
+        int year = 0;
+        int pages = 0;
+        int ArXivID = 0;
+        int DOI = 0;
+        int PMID = 0;
+        int folder = 0;
+        int favorite = 0;
+        String updated_at = null;
+        try{
+            global_id = needToSyncObj.getInt("id");
+            title = needToSyncObj.getString("title");
+            authors = needToSyncObj.getString("authors");
+            abstractStr = needToSyncObj.getString("abstract");
+            journal_id = needToSyncObj.getString("journal_id");
+
+            volume = 0;
+            if(!needToSyncObj.get("volume").equals(null)){
+                volume = needToSyncObj.getInt("volume");
+            }
+            issue = 0;
+            if (!needToSyncObj.get("issue").equals(null)){
+                issue = needToSyncObj.getInt("issue");
+            }
+
+            year = 0;
+            if(!needToSyncObj.get("year").equals(null)){
+                year = needToSyncObj.getInt("year");
+            }
+
+            pages = 0;
+            if(!needToSyncObj.get("pages").equals(null)){
+                pages = needToSyncObj.getInt("pages");
+            }
+
+            ArXivID = 0;
+            if(!needToSyncObj.get("ArXivID").equals(null)){
+                ArXivID = needToSyncObj.getInt("ArXivID");
+            }
+
+            DOI = 0;
+            if(!needToSyncObj.get("DOI").equals(null)){
+                DOI = needToSyncObj.getInt("DOI");
+            }
+
+            PMID = 0;
+            if(!needToSyncObj.get("PMID").equals(null)){
+                PMID = needToSyncObj.getInt("PMID");
+            }
+
+            folder = 0;
+            if(!needToSyncObj.get("folder").equals(null)){
+                folder = needToSyncObj.getInt("folder");
+            }
+
+            favorite = needToSyncObj.getInt("favorite");
+
+            folder = getFolderLocalIdByGlobal(needToSyncObj.getInt("folder"));
+            updated_at = needToSyncObj.getString("updated_at");
+        }catch(JSONException e){
+            e.printStackTrace();
+
+            Log.d(TAG,"DatabaseHandler: addGlobalArticle exception "+e.getMessage());
+        }
+
+        ContentValues values = new ContentValues();
+        values.put(KEY_GLOBAL_ID,global_id);
+        values.put(KEY_ARTICLE_TITLE,title);
+        values.put(KEY_ARTICLE_AUTHORS,authors);
+        values.put(KEY_ARTICLE_ABSTRACT,abstractStr);
+        values.put(KEY_ARTICLE_JOURNAL_ID,journal_id);
+        values.put(KEY_ARTICLE_VOLUME, volume);
+        values.put(KEY_ARTICLE_ISSUE,issue);
+        values.put(KEY_ARTICLE_YEAR,year);
+        values.put(KEY_ARTICLE_PAGES,pages);
+        values.put(KEY_ARTICLE_ARXIVID,ArXivID);
+        values.put(KEY_ARTICLE_DOI,DOI);
+        values.put(KEY_ARTICLE_PMID,PMID);
+        values.put(KEY_ARTICLE_FAVORITE,favorite);
+        values.put(KEY_ARTICLE_FOLDER,folder);
+        values.put(KEY_ARTICLE_UPDATED_AT, updated_at);
+
+        db.update(TABLE_ARTICLES,values, KEY_GLOBAL_ID+" = ?",
+                new String[]{String.valueOf(global_id)});
 
     }
 
@@ -796,6 +922,39 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
     }
 
+    public List<JournalArticle> getFavoriteArticles(){
+
+        List<JournalArticle> articleList = new ArrayList<>();
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        //String SelectQuery = "SELECT * FROM "+TABLE_ARTICLES + " WHERE "+KEY_GLOBAL_ID+"=0";
+        String selectQuery = "SELECT "+KEY_LOCAL_ID+","+KEY_ARTICLE_TITLE+","+KEY_ARTICLE_AUTHORS+","+KEY_ARTICLE_JOURNAL_ID
+                +","+KEY_ARTICLE_CREATED_AT+","+KEY_ARTICLE_FAVORITE+","+KEY_ARTICLE_FILEPATH+" FROM "+TABLE_ARTICLES+" WHERE "
+                +KEY_ARTICLE_FAVORITE+"=1";
+
+        Cursor cursor = db.rawQuery(selectQuery, null);
+
+        if(cursor.moveToFirst()){
+            do{
+                int local_id = cursor.getInt(0);
+                String title = cursor.getString(1);
+                String author = cursor.getString(2);
+                String journal = cursor.getString(3);
+                String created_at = cursor.getString(4);
+                int favorite = cursor.getInt(5);
+                String filepath = cursor.getString(6);
+
+                JournalArticle article = new JournalArticle(local_id,title,author,journal,created_at,favorite,filepath);
+                articleList.add(article);
+            }while(cursor.moveToNext());
+        }
+
+        cursor.close();
+
+        return articleList;
+    }
+
     public List<JournalArticle> getAllArticles(){
 
         List<JournalArticle> articleList = new ArrayList();
@@ -829,10 +988,28 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
     public void setFavorite(int local_id, int favorite){
 
+        Log.d(TAG,"DatabaseHandler: setFavorite, id: "+ String.valueOf(local_id)+", favorite: "+String.valueOf(favorite));
+
         SQLiteDatabase db = this.getWritableDatabase();
+
+        /*
+        * Date date = new Date();
+
+        //PHP: 2017-09-28 06:57:34
+        //JAVA: Tue Oct 24 16:41:50 GMT+07:00 2017
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = dateFormat.format(date);
+        Log.d(TAG,"MainActivity: current date: "+formattedDate);
+        article.setCreated_at(formattedDate);
+        * */
+
+        Date date = new Date();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = dateFormat.format(date);
 
         ContentValues values = new ContentValues();
         values.put(KEY_ARTICLE_FAVORITE,favorite);
+        values.put(KEY_ARTICLE_UPDATED_AT,formattedDate);
 
         db.update(TABLE_ARTICLES,values,KEY_LOCAL_ID+" = ?",new String[]{String.valueOf(local_id)});
 
@@ -891,7 +1068,6 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         ArrayList<HashMap<String,String>> articlesList;
         articlesList = new ArrayList<>();
 
-        //String SelectQuery = "SELECT * FROM "+TABLE_ARTICLES + " WHERE "+KEY_GLOBAL_ID+"=0";
         String SelectQuery = "SELECT * FROM "+TABLE_ARTICLES;
 
         SQLiteDatabase db = this.getReadableDatabase();
@@ -916,13 +1092,27 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     map.put(KEY_ARTICLE_PMID,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_PMID)));
                     map.put(KEY_ARTICLE_FOLDER, String.valueOf(global_folder_parent_id));
                     map.put(KEY_ARTICLE_UPDATED_AT,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_UPDATED_AT)));
+                    map.put(KEY_ARTICLE_FAVORITE, cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_FAVORITE)));
+
                 //Сверить глобальные статьи
                 }else{
-                    //TODO:TMP удалить следующую строку
-                    map.put(KEY_ARTICLE_TITLE,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_TITLE)));
+                    int global_folder_parent_id = getFolderGlobalIdByLocal(cursor.getInt(cursor.getColumnIndex(KEY_ARTICLE_FOLDER)));
 
-                    map.put(KEY_GLOBAL_ID,cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
+                    map.put(KEY_ARTICLE_TITLE,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_TITLE)));
+                    map.put(KEY_ARTICLE_AUTHORS,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_AUTHORS)));
+                    map.put(KEY_ARTICLE_ABSTRACT,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_ABSTRACT)));
+                    map.put(KEY_ARTICLE_JOURNAL_ID,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_JOURNAL_ID)));
+                    map.put(KEY_ARTICLE_YEAR,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_YEAR)));
+                    map.put(KEY_ARTICLE_VOLUME,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_VOLUME)));
+                    map.put(KEY_ARTICLE_ISSUE,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_ISSUE)));
+                    map.put(KEY_ARTICLE_PAGES,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_PAGES)));
+                    map.put(KEY_ARTICLE_ARXIVID,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_ARXIVID)));
+                    map.put(KEY_ARTICLE_DOI,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_DOI)));
+                    map.put(KEY_ARTICLE_PMID,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_PMID)));
+                    map.put(KEY_ARTICLE_FOLDER, String.valueOf(global_folder_parent_id));
                     map.put(KEY_ARTICLE_UPDATED_AT,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_UPDATED_AT)));
+                    map.put(KEY_ARTICLE_FAVORITE, cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_FAVORITE)));
+                    map.put(KEY_GLOBAL_ID,cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
                     map.put(KEY_IS_DELETE,cursor.getString(cursor.getColumnIndex(KEY_IS_DELETE)));
                 }
 
@@ -932,4 +1122,49 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         Gson gson = new GsonBuilder().create();
         return gson.toJson(articlesList);
     }
+
+    public ArrayList<Cursor> getData(String Query){
+        //get writable database
+        SQLiteDatabase sqlDB = this.getWritableDatabase();
+        String[] columns = new String[] { "message" };
+        //an array list of cursor to save two cursors one has results from the query
+        //other cursor stores error message if any errors are triggered
+        ArrayList<Cursor> alc = new ArrayList<Cursor>(2);
+        MatrixCursor Cursor2= new MatrixCursor(columns);
+        alc.add(null);
+        alc.add(null);
+
+        try{
+            String maxQuery = Query ;
+            //execute the query results will be save in Cursor c
+            Cursor c = sqlDB.rawQuery(maxQuery, null);
+
+            //add value to cursor2
+            Cursor2.addRow(new Object[] { "Success" });
+
+            alc.set(1,Cursor2);
+            if (null != c && c.getCount() > 0) {
+
+                alc.set(0,c);
+                c.moveToFirst();
+
+                return alc ;
+            }
+            return alc;
+        } catch(SQLException sqlEx){
+            Log.d("printing exception", sqlEx.getMessage());
+            //if any exceptions are triggered save the error message to cursor an return the arraylist
+            Cursor2.addRow(new Object[] { ""+sqlEx.getMessage() });
+            alc.set(1,Cursor2);
+            return alc;
+        } catch(Exception ex){
+            Log.d("printing exception", ex.getMessage());
+
+            //if any exceptions are triggered save the error message to cursor an return the arraylist
+            Cursor2.addRow(new Object[] { ""+ex.getMessage() });
+            alc.set(1,Cursor2);
+            return alc;
+        }
+    }
+
 }

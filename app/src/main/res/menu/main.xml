@@ -9,7 +9,7 @@
         app:showAsAction="always" />
 
     <item
-        android:id="@+id/action_request_back"
-        android:title="request"
+        android:id="@+id/action_show_db"
+        android:title="show DB"
         app:showAsAction="always" />
 </menu>

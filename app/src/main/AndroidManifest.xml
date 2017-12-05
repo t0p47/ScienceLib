@@ -19,7 +19,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="com.t0p47.sciencelib.activity.MainActivity" />
+        <activity android:name=".db.AndroidDatabaseManager" android:label="@string/app_name"/>
+        <activity android:name="com.t0p47.sciencelib.activity.MainActivity" android:screenOrientation="landscape"/>
         <activity android:name="com.t0p47.sciencelib.activity.RegisterActivity"></activity>
     </application>
 

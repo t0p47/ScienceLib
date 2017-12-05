@@ -12,9 +12,11 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -39,6 +41,7 @@ import com.t0p47.sciencelib.R;
 import com.t0p47.sciencelib.adapter.JournalArticleAdapter;
 import com.t0p47.sciencelib.app.AppConfig;
 import com.t0p47.sciencelib.app.AppController;
+import com.t0p47.sciencelib.db.AndroidDatabaseManager;
 import com.t0p47.sciencelib.db.DatabaseHandler;
 import com.t0p47.sciencelib.decor.DividerItemDecoration;
 import com.t0p47.sciencelib.dialog.FolderToolDialog;
@@ -160,8 +163,39 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             }
 
             @Override
-            public void onLongClick(View view, int position) {
-
+            public void onLongClick(final View view, final int position) {
+                //creating a popup menu
+                PopupMenu popup = new PopupMenu(MainActivity.this,view);
+                //inflating menu from xml resource
+                popup.inflate(R.menu.article_options);
+                //adding click listener
+                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        switch (item.getItemId()) {
+                            case R.id.menuArticleDetails:
+                                //handle menu1 click
+                                Toast.makeText(MainActivity.this, "menu1",Toast.LENGTH_LONG).show();
+                                break;
+                            case R.id.menuArticleEdit:
+                                //handle menu2 click
+                                editArticle(position);
+                                Toast.makeText(MainActivity.this, "menu2",Toast.LENGTH_LONG).show();
+                                break;
+                            case R.id.menuArticleDelete:
+                                JournalArticle article = articlesList.get(position);
+                                dbh.deleteLocalArticle(article.getLocal_id());
+                                articlesList.remove(position);
+                                showArticles();
+                                //handle menu3 click
+                                Toast.makeText(MainActivity.this, "articleDeleted",Toast.LENGTH_LONG).show();
+                                break;
+                        }
+                        return false;
+                    }
+                });
+                //displaying the popup
+                popup.show();
             }
         }));
 
@@ -226,6 +260,16 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
     }
 
+    private void editArticle(int position){
+        android.app.FragmentManager fragmentManager = getFragmentManager();
+        NewArticleDialog newArticleDialog = new NewArticleDialog();
+        newArticleDialog.setCancelable(true);
+        newArticleDialog.setDialogTitle("Edit article");
+        Log.d(TAG,"MainActivity: editArticle title: " + articlesList.get(position).getTitle());
+        newArticleDialog.setArticleDetails(position, articlesList.get(position));
+        newArticleDialog.show(fragmentManager, "InputDialog");
+    }
+
     private void showNewArticleDialog(){
         android.app.FragmentManager fragmentManager = getFragmentManager();
         NewArticleDialog newArticleDialog = new NewArticleDialog();
@@ -235,14 +279,24 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     }
 
     @Override
+    public void onFinishEditArticleDialog(int listPosition, JournalArticle article){
+
+        dbh.updateArticle(article);
+        articlesList.set(listPosition,article);
+        showArticles();
+
+    }
+
+    @Override
     public void onFinishNewArticleDialog(JournalArticle article){
 
         Toast.makeText(this, "New article name: "+article.getTitle(), Toast.LENGTH_SHORT).show();
         article.setFolder(currentFolderId);
         Date date = new Date();
+
         //PHP: 2017-09-28 06:57:34
         //JAVA: Tue Oct 24 16:41:50 GMT+07:00 2017
-        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String formattedDate = dateFormat.format(date);
         Log.d(TAG,"MainActivity: current date: "+formattedDate);
         article.setCreated_at(formattedDate);
@@ -394,8 +448,9 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         Log.d(TAG,"MainActivity: notify adapter. Articles count "+articlesList.size());
         mAdapter = new JournalArticleAdapter(articlesList);
-        //mAdapter.notifyDataSetChanged();
+
         recyclerView.setAdapter(mAdapter);
+        //mAdapter.notifyDataSetChanged();
     }
 
     private void getArticles(){
@@ -663,6 +718,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     private void loadArticlesInFolder(int folderId){
         articlesList = dbh.getArticlesInFolder(folderId);
         showArticles();
+        showArticles();
     }
 
     private void loadFolder(){
@@ -672,6 +728,25 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             ViewGroup containerView = (ViewGroup) findViewById(R.id.container);
 
             TreeNode root = TreeNode.root();
+
+            //AllArticles and other
+            TreeNode myLibraryRootNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, "MyLibrary",-1));
+            root.addChild(myLibraryRootNode);
+
+            TreeNode allArticlesNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, "All articles",-2));
+            myLibraryRootNode.addChild(allArticlesNode);
+
+            TreeNode myArticlesNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, "My articles",-3));
+            myLibraryRootNode.addChild(myArticlesNode);
+
+            TreeNode recentlyAddedNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, "Recently added",-4));
+            myLibraryRootNode.addChild(recentlyAddedNode);
+
+            TreeNode favoriteNode = new TreeNode(new IconTreeItemHolder.IconTreeItem(R.string.ic_folder, "Favorite",-5));
+            myLibraryRootNode.addChild(favoriteNode);
+
+
+
 
             foldersTreeIds = new HashMap<>();
 
@@ -723,7 +798,41 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         Toast.makeText(this, "Click folder", Toast.LENGTH_SHORT).show();
         int localFolderId = ((IconTreeItemHolder.IconTreeItem)value).local_folder_id;
         //Log.d(TAG, "MainActivity: treeNode "+node+", value: "+localFolderId);
-        if(currentFolderId!=localFolderId){
+        if(localFolderId<0){
+            switch (localFolderId){
+                case -1:
+                    articlesList = dbh.getAllArticles();
+                    setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
+                    showArticles();
+                    Toast.makeText(MainActivity.this,"All articles", Toast.LENGTH_LONG).show();
+                    break;
+                case -2:
+                    articlesList = dbh.getAllArticles();
+                    setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
+                    showArticles();
+                    Toast.makeText(MainActivity.this,"All articles", Toast.LENGTH_LONG).show();
+                    break;
+                case -3:
+                    /*articlesList = dbh.getAllArticles();
+                    setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
+                    showArticles();*/
+                    Toast.makeText(MainActivity.this,"My articles", Toast.LENGTH_LONG).show();
+                    break;
+                case -4:
+                    /*articlesList = dbh.getAllArticles();
+                    setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
+                    showArticles();*/
+                    Toast.makeText(MainActivity.this,"Recently added", Toast.LENGTH_LONG).show();
+                    break;
+                case -5:
+                    articlesList = dbh.getFavoriteArticles();
+                    setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
+                    showArticles();
+                    Toast.makeText(MainActivity.this,"Favorite", Toast.LENGTH_LONG).show();
+                    break;
+            }
+        }
+        else if(currentFolderId!=localFolderId){
             currentFolderId=localFolderId;
             loadArticlesInFolder(currentFolderId);
             setToolbarTilte(((IconTreeItemHolder.IconTreeItem)value).text);
@@ -763,11 +872,11 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         getMenuInflater().inflate(R.menu.main, menu);
 
         //TODO: Не могу получить getActionView(все время null) для создания анимации
-        MenuItem searchItem = menu.findItem(R.id.action_refresh);
+        /*MenuItem searchItem = menu.findItem(R.id.action_refresh);
         ImageView searchView =
                 (ImageView) MenuItemCompat.getActionView(searchItem);
 
-        Log.d(TAG,"MainActivity: onCreateOptionsMenu "+searchView);
+        Log.d(TAG,"MainActivity: onCreateOptionsMenu "+searchView);*/
 
         // Configure the search info and add any event listeners...
 
@@ -791,12 +900,15 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             return true;
         }
 
-        if(id == R.id.action_request_back){
+        if(id == R.id.action_show_db){
 
-            Toast.makeText(this, "Send request bacl", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Show SQLiteDB", Toast.LENGTH_SHORT).show();
 
             //folderSyncRequestBack();
-            articleSyncRequestBack();
+            //articleSyncRequestBack();
+
+            Intent dbManager = new Intent(MainActivity.this, AndroidDatabaseManager.class);
+            startActivity(dbManager);
             return true;
 
         }
@@ -1062,13 +1174,15 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                     JSONArray needToSyncArr = obj.getJSONArray("needToSync");
                     JSONArray needToDeleteArr = obj.getJSONArray("needToDelete");
 
+                    Log.d(TAG,"MainActivity: needToDeleteLength"+needToDeleteArr.length());
+
                     for(int i = 0;i<needToDeleteArr.length();i++){
 
-                        JSONObject needToDeleteObj = needToDeleteArr.getJSONObject(i);
+                        int delete_global_id = Integer.parseInt(needToDeleteArr.getString(i));
 
-                        Log.d(TAG,"MainActivity: needToDelete: "+needToDeleteObj);
+                        Log.d(TAG,"MainActivity: needToDelete: "+delete_global_id);
 
-                        dbh.deleteGlobalArticle(needToDeleteObj.getInt("global_id"));
+                        dbh.deleteGlobalArticle(delete_global_id);
 
                     }
 
@@ -1084,6 +1198,15 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                     for(int i = 0;i<serverCreatedArr.length();i++){
                         JSONObject newArticleObj = serverCreatedArr.getJSONObject(i);
                         dbh.addGlobalArticle(newArticleObj);
+                    }
+
+                    for(int i = 0;i<needToSyncArr.length();i++){
+
+                        JSONArray needToSyncSecondArr = needToSyncArr.getJSONArray(i);
+                        for(int j = 0;j<needToSyncSecondArr.length();j++){
+                            Toast.makeText(MainActivity.this, "UpdateLocalArticleByServer: "+needToSyncSecondArr.getJSONObject(0).getString("title"), Toast.LENGTH_LONG).show();
+                            dbh.updateLocalArticleByServer(needToSyncSecondArr.getJSONObject(0));
+                        }
                     }
 
                 }catch(JSONException e){

@@ -30,8 +30,8 @@
             android:layout_margin="10dp"
             android:focusable="false"
             android:focusableInTouchMode="false"
-            android:textOff="@string/fa_icon_star"
-            android:textOn="@string/fa_icon_star" />
+            android:textOff="@string/fa_icon_star_empty"
+            android:textOn="@string/fa_icon_star_full" />
     </LinearLayout>
 
     <LinearLayout
