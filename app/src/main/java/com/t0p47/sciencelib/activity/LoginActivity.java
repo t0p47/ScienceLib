@@ -116,7 +116,7 @@ public class LoginActivity extends AppCompatActivity {
         StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_LOGIN_USER, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                //Log.d(TAG, "LoginActivity: response: " + response.toString());
+                Log.d(TAG, "LoginActivity: response: " + response.toString());
                 hideDialog();
 
                 //TODO: Распарсить ответ
@@ -126,8 +126,10 @@ public class LoginActivity extends AppCompatActivity {
                     session.setLogin(true);
 
                     String token = jObj.getString("token");
+                    int user_id = jObj.getInt("user_id");
 
                     session.setAuthToken(token);
+                    session.setUID(user_id);
 
                     Intent intent = new Intent(LoginActivity.this,MainActivity.class);
                     startActivity(intent);

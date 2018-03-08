@@ -3,15 +3,19 @@
 
     <item
         android:id="@+id/menuArticleDetails"
-        android:title="Details" />
+        android:title="Детали" />
+
+    <item
+        android:id="@+id/menuArticleRead"
+        android:title="Читать статью" />
 
     <item
         android:id="@+id/menuArticleEdit"
-        android:title="Edit article" />
+        android:title="Редактировать статью" />
 
     <item
         android:id="@+id/menuArticleDelete"
-        android:title="Delete article" />
+        android:title="Удалить статью" />
 
 
 </menu>

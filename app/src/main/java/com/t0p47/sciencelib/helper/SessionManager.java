@@ -24,6 +24,8 @@ public class SessionManager {
 
     private static final String KEY_IS_LOGGEDIN = "isLoggedIn";
     private static final String KEY_AUTH_TOKEN = "authToken";
+    private static final String KEY_USER_ID = "userId";
+    private static final String KEY_PATH_TO_FILE = "pathToFile";
 
     public SessionManager(Context context){
         this._context = context;
@@ -40,6 +42,28 @@ public class SessionManager {
 
     public String getAuthToken(){
         return pref.getString(KEY_AUTH_TOKEN, "false");
+    }
+
+    public void setUID(int uid){
+        editor.putInt(KEY_USER_ID,uid);
+
+        editor.commit();
+    }
+
+    public int getUID(){
+        return pref.getInt(KEY_USER_ID,0);
+    }
+
+    public void setPathToFile(String pathToFile){
+        editor.putString(KEY_PATH_TO_FILE, pathToFile);
+
+        editor.commit();
+    }
+
+    public String getPathToFile(){
+
+        return pref.getString(KEY_PATH_TO_FILE, null);
+
     }
 
     public void setLogin(boolean isLoggedIn){

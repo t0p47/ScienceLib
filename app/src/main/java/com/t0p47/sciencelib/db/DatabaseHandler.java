@@ -12,12 +12,14 @@ import android.util.Log;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.t0p47.sciencelib.app.AppConfig;
+import com.t0p47.sciencelib.helper.SessionManager;
 import com.t0p47.sciencelib.model.Folder;
 import com.t0p47.sciencelib.model.JournalArticle;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -1065,6 +1067,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
 
     public String composeJSONFromArticles(){
 
+        SessionManager session = new SessionManager(_context);
         ArrayList<HashMap<String,String>> articlesList;
         articlesList = new ArrayList<>();
 
@@ -1097,6 +1100,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                 //Сверить глобальные статьи
                 }else{
                     int global_folder_parent_id = getFolderGlobalIdByLocal(cursor.getInt(cursor.getColumnIndex(KEY_ARTICLE_FOLDER)));
+                    int global_id = cursor.getInt(cursor.getColumnIndex(KEY_GLOBAL_ID));
+                    String filepath = cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_FILEPATH));
 
                     map.put(KEY_ARTICLE_TITLE,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_TITLE)));
                     map.put(KEY_ARTICLE_AUTHORS,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_AUTHORS)));
@@ -1112,8 +1117,32 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     map.put(KEY_ARTICLE_FOLDER, String.valueOf(global_folder_parent_id));
                     map.put(KEY_ARTICLE_UPDATED_AT,cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_UPDATED_AT)));
                     map.put(KEY_ARTICLE_FAVORITE, cursor.getString(cursor.getColumnIndex(KEY_ARTICLE_FAVORITE)));
-                    map.put(KEY_GLOBAL_ID,cursor.getString(cursor.getColumnIndex(KEY_GLOBAL_ID)));
+                    map.put(KEY_GLOBAL_ID,String.valueOf(global_id));
                     map.put(KEY_IS_DELETE,cursor.getString(cursor.getColumnIndex(KEY_IS_DELETE)));
+                    map.put(KEY_ARTICLE_FILEPATH, filepath);
+
+
+
+                    if(!filepath.isEmpty() && !filepath.equals("null")){
+                        String pathToFile = session.getPathToFile()+filepath;
+
+                        Log.d(TAG,"DatabaseHandler: pathToFile "+pathToFile);
+
+                        File file = new File(pathToFile);
+                        if(file.exists()){
+
+                            String filesize = String.valueOf(file.length());
+                            String lastModifTimestamp = String.valueOf(file.lastModified());
+
+                            map.put("filesize",filesize);
+                            map.put("lastModifTime",lastModifTimestamp);
+
+                        }else{
+                            Log.e(TAG,"DatabaseHandler: Ошибка!!! Запись о файле есть, файла нет");
+                        }
+
+                    }
+
                 }
 
                 articlesList.add(map);

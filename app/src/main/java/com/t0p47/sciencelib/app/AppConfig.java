@@ -27,6 +27,10 @@ public class AppConfig {
 
     public static String URL_ARTICLE_REQUEST_BACK = "http://45.76.158.9/api/android/article/request";
 
+    public static String URL_RECEIVE_FILE = "http://45.76.158.9/api/windows/receive/file";
+
+    public static String URL_RECEIVE_FILE_TEST = "http://45.76.158.9/api/android/send/fileTest";
+
 
 
     public static int GLOBAL_FOLDER_EXIST = 0;

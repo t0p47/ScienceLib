@@ -2,8 +2,12 @@ package com.t0p47.sciencelib.activity;
 
 import android.app.FragmentManager;
 import android.app.ProgressDialog;
+import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -15,6 +19,8 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
@@ -31,9 +37,12 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
+import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.github.johnkil.print.PrintView;
 import com.t0p47.library.model.TreeNode;
 import com.t0p47.library.view.AndroidTreeView;
@@ -48,7 +57,9 @@ import com.t0p47.sciencelib.dialog.FolderToolDialog;
 import com.t0p47.sciencelib.dialog.NewArticleDialog;
 import com.t0p47.sciencelib.dialog.NewFolderDialog;
 import com.t0p47.sciencelib.helper.Helper;
+import com.t0p47.sciencelib.helper.InputStreamVolleyRequest;
 import com.t0p47.sciencelib.helper.SessionManager;
+import com.t0p47.sciencelib.helper.StorageHelper;
 import com.t0p47.sciencelib.holder.ArrowExpandSelectableHeaderHolder;
 import com.t0p47.sciencelib.holder.IconTreeItemHolder;
 import com.t0p47.sciencelib.interfaces.RecyclerTouchListener;
@@ -59,6 +70,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -116,6 +132,13 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
 
         session = new SessionManager(this);
         dbh = new DatabaseHandler(this);
+
+        String filepath = getFilepathToSaveArticleFile();
+        if(filepath!=null){
+            session.setPathToFile(filepath);
+        }else{
+            //TODO:Без SD карты
+        }
 
         Intent intent = getIntent();
         if(intent.hasExtra("restart")){
@@ -176,6 +199,11 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                             case R.id.menuArticleDetails:
                                 //handle menu1 click
                                 Toast.makeText(MainActivity.this, "menu1",Toast.LENGTH_LONG).show();
+                                break;
+                            case R.id.menuArticleRead:
+                                String path = session.getPathToFile()+articlesList.get(position).getFilePath();
+                                Log.d(TAG,"MainActivity: filepath "+articlesList.get(position).getFilePath());
+                                readPdfFile(path);
                                 break;
                             case R.id.menuArticleEdit:
                                 //handle menu2 click
@@ -257,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             navItemIndex=0;
             loadFolder();
         }*/
-
+        //getFilepathToSaveArticleFile();
     }
 
     private void editArticle(int position){
@@ -556,9 +584,12 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         StringRequest strReq = new StringRequest(Request.Method.POST, AppConfig.URL_SYNC_ARTICLES, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                Log.d(TAG, "MainActivity: response " + response);
+                Log.d(TAG, "MainActivity: firstTime article sync response " + response);
 
                 try{
+
+                    List<String> filepathDownload = new ArrayList<>();
+
                     JSONArray jArr = new JSONArray(response);
                     articlesList = new ArrayList<>();
                     if(jArr.length()!=0){
@@ -617,7 +648,9 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                             String created_at = jObj.getString("created_at");
                             String updated_at = jObj.getString("updated_at");
 
-
+                            if(!filepath.isEmpty() && !filepath.equals("null")){
+                                DownloadFile(global_id, filepath);
+                            }
 
                             JournalArticle article = new JournalArticle(global_id, title, authors, abstractText,journal,volume,issue,year,pages,ArXivID,DOI,PMID,folder,filepath,created_at, updated_at,favorite);
                             articlesList.add(article);
@@ -668,6 +701,51 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         };
 
         AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
+    }
+
+    private String getFilepathToSaveArticleFile(){
+
+        StorageHelper helper = new StorageHelper();
+        ArrayList<StorageHelper.MountDevice> allDevices = helper.getAllMountedDevices();
+
+        getExternalPublicDir(this, "AlbumTRY");
+
+        for(StorageHelper.MountDevice device : allDevices){
+            Log.d(TAG,"MainActivity: Device - "+device.getPath()+", type - "+device.getType());
+            if(device.getType().equals(StorageHelper.MountDeviceType.REMOVABLE_SD_CARD)){
+                Log.d(TAG,"MainActivity: SD card found path - "+device.getPath());
+                String filepath = device.getPath()+"/Android/data/"+getPackageName()+"/files";
+                saveFileToSD(filepath);
+                return filepath;
+            }
+        }
+        return null;
+    }
+
+    private void saveFileToSD(String path){
+        try {
+            File myFile = new File(path+"/19/987/firstFile.txt");
+            myFile.createNewFile();
+            FileOutputStream fOut = new FileOutputStream(myFile);
+            OutputStreamWriter myOutWriter = new OutputStreamWriter(fOut);
+            myOutWriter.append("ScienceLib");
+            myOutWriter.close();
+            fOut.close();
+            Toast.makeText(this, "Done writing SD 'mysdfile.txt'", Toast.LENGTH_SHORT).show();
+            Log.d(TAG,"Done writing SD 'mysdfile.txt'");
+        } catch (Exception e) {
+            Log.d(TAG,"Error opening file. Ex-"+e.getMessage());
+            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private File getExternalPublicDir(Context context, String albumName){
+
+        File file = new File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),albumName);
+        if(!file.mkdirs()){
+            Log.e(TAG,"MainActivity: Directory not created!");
+        }
+        return file;
     }
 
     private void refreshToken(){
@@ -1154,7 +1232,6 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
     }
 
     private void syncArticles(){
-        //final String foldersListStr = dbh.composeJSONFromFolders();
         final String articlesListStr = dbh.composeJSONFromArticles();
 
         String tag_string_req = "req_articles_sync";
@@ -1198,6 +1275,14 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
                     for(int i = 0;i<serverCreatedArr.length();i++){
                         JSONObject newArticleObj = serverCreatedArr.getJSONObject(i);
                         dbh.addGlobalArticle(newArticleObj);
+
+                        String filepath = newArticleObj.getString("filepath");
+                        int jid = newArticleObj.getInt("id");
+                        if(!(filepath == null || filepath.isEmpty())){
+
+                            DownloadFile(jid, filepath);
+
+                        }
                     }
 
                     for(int i = 0;i<needToSyncArr.length();i++){
@@ -1256,6 +1341,7 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
             @Override
             protected Map<String,String> getParams(){
                 Map<String,String> params = new HashMap<>();
+                Log.d(TAG,"MainActivity: syncArticles REQUEST "+articlesListStr);
                 params.put("request",articlesListStr);
                 params.put("type","android");
 
@@ -1271,6 +1357,133 @@ public class MainActivity extends AppCompatActivity implements TreeNode.TreeNode
         ));
 
         AppController.getInstance().addToRequestQueue(strReq,tag_string_req);
+    }
+
+    private void DownloadFile(final int jid, final String filepath){
+
+        String mUrl = AppConfig.URL_RECEIVE_FILE;
+
+        InputStreamVolleyRequest request = new InputStreamVolleyRequest(Request.Method.POST, mUrl,
+
+                new Response.Listener<byte[]>() {
+
+                    @Override
+
+                    public void onResponse(byte[] response) {
+
+                        try {
+                            String respStr = new String(response, "UTF-8");
+                            Log.d(TAG,"MainActivity: downloadFile String response: "+respStr);
+                        } catch (UnsupportedEncodingException e) {
+                            e.printStackTrace();
+                        }
+
+                        Log.d(TAG,"MainActivity: downloadFile response: "+response.length);
+
+                        try {
+
+                            if (response!=null) {
+
+                                String path = session.getPathToFile();
+
+                                Log.d(TAG,"MainActivity: filepathToExternal "+path);
+
+                                File filepathFolder = new File(path + filepath.substring(0,filepath.lastIndexOf("/")));
+                                if(!filepathFolder.mkdirs()){
+                                    Log.e(TAG,"mkdirs not work");
+                                    Toast.makeText(MainActivity.this, "mkdirs not works", Toast.LENGTH_SHORT).show();
+                                }
+
+                                File myFile = new File(path+filepath);
+                                myFile.createNewFile();
+                                FileOutputStream fOut = new FileOutputStream(myFile);
+
+                                fOut.write(response);
+                                fOut.close();
+
+                                /*FileOutputStream outputStream;
+
+                                String name="Parasitol.pdf";
+
+                                outputStream = openFileOutput(name, Context.MODE_PRIVATE);
+
+                                outputStream.write(response);
+
+                                outputStream.close();
+
+                                //Toast.makeText(this, "Download complete.", Toast.LENGTH_LONG).show();*/
+
+                            }
+
+                        } catch (Exception e) {
+
+                            // TODO Auto-generated catch block
+
+                            Log.d("KEY_ERROR", "UNABLE TO DOWNLOAD FILE");
+
+                            e.printStackTrace();
+
+                        }
+
+                    }
+
+                } ,new Response.ErrorListener() {
+
+
+
+            @Override
+
+            public void onErrorResponse(VolleyError error) {
+
+                // TODO handle the error
+
+                error.printStackTrace();
+
+            }
+
+        }, null){
+
+            @Override
+            public Map<String,String> getHeaders() throws AuthFailureError{
+                HashMap<String,String> headers = new HashMap<>();
+                String token = "Bearer "+session.getAuthToken();
+                headers.put("Authorization",token);
+                return headers;
+            }
+
+            @Override
+            protected Map<String,String> getParams(){
+                Map<String,String> params = new HashMap<>();
+                Log.d(TAG,"MainActivity: downloadFile REQUEST: "+String.valueOf(jid));
+                params.put("jid",String.valueOf(jid));
+                return params;
+            }
+
+        };
+
+        RequestQueue mRequestQueue = Volley.newRequestQueue(getApplicationContext(), new HurlStack());
+
+        mRequestQueue.add(request);
+
+    }
+
+    private void readPdfFile(String filepath){
+
+        File file = new File(filepath);
+
+        Uri path = Uri.fromFile(file);
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(path,"application/pdf");
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        try{
+            startActivity(intent);
+        }catch (ActivityNotFoundException e){
+            Toast.makeText(this, "Нет приложения для чтения PDF файлов.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG,"MainActivity: No application available to view PDF.");
+        }
+
     }
 
     private void setToolbarTilte(String title){
